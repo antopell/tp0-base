@@ -5,8 +5,6 @@ def generar(nombre, cant_clientes):
 	with open(nombre, "w") as archivo:
 		contenido = "name: tp0\n"
 		contenido += "services:\n"
-		contenido += "name: tp0\n"
-		contenido += "services:\n"
 
 		# server
 		contenido += "  server:\n"
@@ -46,7 +44,7 @@ def generar(nombre, cant_clientes):
 		contenido += "      config:\n"
 		contenido += "        - subnet: 172.25.125.0/24\n"
 
-		
+
 		archivo.write(contenido)
 
 	return

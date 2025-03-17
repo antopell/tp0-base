@@ -19,7 +19,9 @@ def generar(nombre, cant_clientes):
 		contenido += "    networks:\n"
 		contenido += "      - testing_net\n"
 		contenido += "    volumes:\n"
-		contenido += "      - " + path_server + ":/config.ini\n"
+		contenido += "      - type: bind\n"
+		contenido += "        source: " + path_server + "\n"
+		contenido += "        target: /config.ini\n"
 
 		contenido += "\n"
 
@@ -39,7 +41,9 @@ def generar(nombre, cant_clientes):
 			contenido += "    depends_on:\n"
 			contenido += "      - server\n"
 			contenido += "    volumes:\n"
-			contenido += "      - " + path_cliente + ":/config.yaml\n"
+			contenido += "      - type: bind\n"
+			contenido += "        source: " + path_cliente + "\n"
+			contenido += "        target: /config.yaml\n"
 			contenido += "\n"
 				
 		# network

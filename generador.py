@@ -3,6 +3,8 @@ import sys
 def generar(nombre, cant_clientes):
     
 	with open(nombre, "w") as archivo:
+		path_server = "./server/config.ini"
+		path_cliente = "./client/config.yaml"
 		contenido = "name: tp0\n"
 		contenido += "services:\n"
 
@@ -16,6 +18,8 @@ def generar(nombre, cant_clientes):
 		contenido += "      - LOGGING_LEVEL=DEBUG\n"
 		contenido += "    networks:\n"
 		contenido += "      - testing_net\n"
+		contenido += "    volumes:\n"
+		contenido += "      - " + path_server + ":/config.ini\n"
 
 		contenido += "\n"
 
@@ -34,6 +38,8 @@ def generar(nombre, cant_clientes):
 			contenido += "      - testing_net\n"
 			contenido += "    depends_on:\n"
 			contenido += "      - server\n"
+			contenido += "    volumes:\n"
+			contenido += "      - " + path_cliente + ":/config.yaml\n"
 			contenido += "\n"
 				
 		# network

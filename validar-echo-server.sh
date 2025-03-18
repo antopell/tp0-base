@@ -1,16 +1,22 @@
 #!/bin/bash
 
 # docker setup
-./generar-compose.sh docker-compose-dev.yaml 1
-make docker-image
-# con d para liberar la terminal
-docker compose -f docker-compose-dev.yaml up server -d
+sh ./generar-compose.sh docker-compose-dev.yaml 1
+make docker-compose-up
 
-PORT="$(grep "SERVER_PORT = " ./server/config.ini  | cut -d ' ' -f3)"
-IP="$(grep "SERVER_IP = " ./server/config.ini  | cut -d ' ' -f3)"
+PORT=$(grep "SERVER_PORT = " ./server/config.ini  | cut -d ' ' -f3)
+IP=$(grep "SERVER_IP = " ./server/config.ini  | cut -d ' ' -f3)
 
-echo "${PORT}"
-echo "${IP}"
+TESTING_STR='testing'
 
-docker compose -f docker-compose-dev.yaml down
+RES=$(docker exec client1 sh -c "echo $TESTING_STR | nc $IP $PORT")
+
+if [ $RES == $TESTING_STR ]
+then
+  echo "action: test_echo_server | result: success"
+else
+  echo "action: test_echo_server | result: fail"
+fi
+
+make docker-compose-down
 

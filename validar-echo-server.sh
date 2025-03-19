@@ -11,7 +11,7 @@ TESTING_STR='testing'
 
 RES=$(docker exec client1 sh -c "echo $TESTING_STR | nc $IP $PORT")
 
-if [ $RES == $TESTING_STR ]
+if [[ "$RES" == "$TESTING_STR" ]]
 then
   echo "action: test_echo_server | result: success"
 else

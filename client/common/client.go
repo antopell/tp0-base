@@ -28,7 +28,7 @@ type ClientData struct {
 	Surname				string
 	Dni						string
 	BirthDateISO	string
-	BettingNumber int
+	BettingNumber string
 }
 
 // Client Entity that encapsulates how

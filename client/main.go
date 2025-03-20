@@ -88,6 +88,13 @@ func PrintConfig(v *viper.Viper) {
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
 	)
+	log.Infof("action: data | result: success | name: %s | surname: %s | dni: %v | birthdate: %v | bet: %s",
+		os.Getenv("NOMBRE"),
+		os.Getenv("APELLIDO"),
+		os.Getenv("DOCUMENTO"),
+		os.Getenv("NACIMIENTO"),
+		os.Getenv("NUMERO"),
+	)
 }
 
 func main() {
@@ -111,11 +118,11 @@ func main() {
 	}
 
 	clientData := common.ClientData{
-		Name:						v.GetString("NOMBRE"),
-		Surname:				v.GetString("APELLIDO"),
-		Dni:						v.GetString("DOCUMENTO"),
-		BirthDateISO:		v.GetString("NACIMIENTO"),
-		BettingNumber:	v.GetInt("NUMERO"),
+		Name:						os.Getenv("NOMBRE"),
+		Surname:				os.Getenv("APELLIDO"),
+		Dni:						os.Getenv("DOCUMENTO"),
+		BirthDateISO:		os.Getenv("NACIMIENTO"),
+		BettingNumber:	os.Getenv("NUMERO"),
 	}
 
 	client := common.NewClient(clientConfig, clientData)

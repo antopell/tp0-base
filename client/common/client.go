@@ -78,7 +78,8 @@ func (c *Client) StartClientLoop() {
 		select {
 		case sig := <-signalChannel:
 			// c.conn should be closed by now 
-			log.Infof("action: exit | result: fail | client_id: %v | signal: %v", c.config.ID, sig)
+			c.conn.Close() // just in case
+			log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
 			return
 		default:
 		}

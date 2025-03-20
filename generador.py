@@ -1,6 +1,12 @@
 import sys
+import random
 
 def generar(nombre, cant_clientes):
+
+	lista_nombres = ["Antonella", "Jazmín", "Patricia", "Dibu", "Marc", "Oscar"]
+	lista_apellidos = ["Pellegrini", "Martinez", "Marquez", "Piastri"]
+	lista_dni = ["14328903", "47259862", "7592348", "28324758"]
+	lista_nacimiento = ["2003-01-29", "1992-09-02", "1993-02-17", "2001-04-06"]
     
 	with open(nombre, "w") as archivo:
 		path_server = "./server/config.ini"
@@ -32,6 +38,12 @@ def generar(nombre, cant_clientes):
 			contenido += "    entrypoint: /client\n"
 			contenido += "    environment:\n"
 			contenido += "      - CLI_ID=" + num_string + "\n"
+			contenido += "      - NOMBRE=" + random.choice(lista_nombres) + "\n"
+			contenido += "      - APELLIDO=" + random.choice(lista_apellidos) + "\n"
+			contenido += "      - DOCUMENTO=" + random.choice(lista_dni) + "\n"
+			contenido += "      - NACIMIENTO=" + random.choice(lista_nacimiento) + "\n"
+			contenido += "      - NUMERO=" + str(random.randint(1000, 9999)) + "\n"
+
 			contenido += "    networks:\n"
 			contenido += "      - testing_net\n"
 			contenido += "    depends_on:\n"

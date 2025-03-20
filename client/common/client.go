@@ -79,6 +79,7 @@ func (c *Client) StartClientLoop() {
 			// c.conn should be closed by now 
 			log.Infof("action: exit | result: fail | client_id: %v | signal: %v", c.config.ID, sig)
 			return
+		default:
 		}
 
 		if err != nil {

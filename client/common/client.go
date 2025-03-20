@@ -55,11 +55,12 @@ func (c *Client) createClientSocket() error {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
-	signalChannel := make(chan os.Signal, 1)
-  signal.Notify(signalChannel, syscall.SIGTERM, syscall.SIGINT)
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+		signalChannel := make(chan os.Signal, 1)
+  	signal.Notify(signalChannel, syscall.SIGTERM, syscall.SIGINT)
+	
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 

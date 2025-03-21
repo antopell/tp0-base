@@ -64,6 +64,21 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+// SendMessage sends a message in bytes through the socket
+// of the client. Supports short write
+func (c *Client) sendMessage(message []byte) {
+	lenMessage = len(message)
+	bytesWritten = 0
+
+	// Continues writing until it's all sent
+	for bytesWritten < lenMessage
+		written, err := fmt.Fprintf(
+			c.conn,
+			message[bytesWritten:],
+		)
+		bytesWritten += written
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
 	signalChannel := make(chan os.Signal, 1)
@@ -76,13 +91,8 @@ func (c *Client) StartClientLoop() {
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
-			c.config.ID,
-			msgID,
-		)
+		// TODO: create message and send it
+
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()
 

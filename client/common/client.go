@@ -2,7 +2,7 @@ package common
 
 import (
 	"bufio"
-	"fmt"
+	// "fmt"
 	"net"
 	"time"
 	"os"
@@ -67,16 +67,21 @@ func (c *Client) createClientSocket() error {
 // SendMessage sends a message in bytes through the socket
 // of the client. Supports short write
 func (c *Client) sendMessage(message []byte) {
-	lenMessage = len(message)
-	bytesWritten = 0
+	lenMessage := len(message)
+	bytesWritten := 0
 
 	// Continues writing until it's all sent
-	for bytesWritten < lenMessage
-		written, err := fmt.Fprintf(
-			c.conn,
-			message[bytesWritten:],
-		)
+	for bytesWritten < lenMessage {
+		written, err := c.conn.Write(message[bytesWritten:])
+		if err != nil {
+			log.Criticalf(
+				"action: send message | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+		}
 		bytesWritten += written
+	}
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met

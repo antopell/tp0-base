@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/op/go-logging"
+	"github.com/7574-sistemas-distribuidos/docker-compose-init/client/protocol"
 )
 
 var log = logging.MustGetLogger("log")
@@ -33,9 +34,10 @@ type ClientData struct {
 
 // Client Entity that encapsulates how
 type Client struct {
-	config	ClientConfig
-	conn		net.Conn
-	data 		ClientData
+	config		ClientConfig
+	conn			net.Conn
+	data 			ClientData
+	protocol 	protocol.Protocol
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -44,6 +46,7 @@ func NewClient(config ClientConfig, data ClientData) *Client {
 	client := &Client{
 		config: config,
 		data: data,
+		protocol: *protocol.NewProtocol(),
 	}
 	return client
 }
@@ -97,6 +100,8 @@ func (c *Client) StartClientLoop() {
 		c.createClientSocket()
 
 		// TODO: create message and send it
+		data := c.data
+		c.protocol.CreateBetMessage(data.Name, data.Surname, data.Dni, data.BirthDateISO, data.BettingNumber)
 
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()

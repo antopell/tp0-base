@@ -3,7 +3,7 @@ package protocol
 import (
 	"encoding/binary"
 	"fmt"
-	// "strconv"
+	"strconv"
 )
 
 
@@ -14,6 +14,8 @@ const ISODateLegth = 10
 // Protocol Entity that encapsulates the creation
 // of messages
 type Protocol struct {
+	messageInCreation []byte
+	lenWritten				int
 }
 
 // NewProtocol Initializes a new protocol
@@ -31,7 +33,7 @@ const BirthDateCode = 4
 const BetNumberCode = 5
 
 // CreateBetMessage Creates a message with the bet info ready to be sent in bytes
-func (protocol *Protocol) CreateBetMessage(name string, surname string, dni string, birthDateISO string, betNumer string) []byte {
+func (protocol *Protocol) CreateBetMessage(name string, surname string, dni string, birthDateISO string, betNumber string) []byte {
 	// Bet message structure:
 	// 1|1|<largo>|<nombre>|2|<largo>|<apellido>|3|<dni>|4|<fecha>|5|<numero>
 
@@ -40,15 +42,57 @@ func (protocol *Protocol) CreateBetMessage(name string, surname string, dni stri
 	nameLen := len(name)
 	surnameLen := len(surname)
 	lenMessage := CodeLegth * 6 + IntLength * 4 + nameLen + surnameLen + ISODateLegth
+	
+	protocol.messageInCreation = make([]byte, lenMessage)
+	protocol.lenWritten = 0
 
-	message := make([]byte, lenMessage)
-	messageCode := uint16(BetCode)
-	binary.BigEndian.PutUint16(message[0:], messageCode)
+	protocol.addCodeToMessage(BetCode)
 
-	nameCode := uint16(NameCode)
-	binary.BigEndian.PutUint16(message[2:], nameCode)
+	protocol.addCodeToMessage(NameCode)
+	protocol.addVariableLenStringToMessage(name)
 
-	fmt.Printf("% x\n", message)
+	protocol.addCodeToMessage(SurnameCode)
+	protocol.addVariableLenStringToMessage(surname)
 
-	return message
+	protocol.addCodeToMessage(DNICode)
+	protocol.addIntFromStringToMessage(dni)
+
+	protocol.addCodeToMessage(BirthDateCode)
+	protocol.addStringToMessage(birthDateISO)
+
+	protocol.addCodeToMessage(BetNumberCode)
+	protocol.addIntFromStringToMessage(betNumber)
+
+
+	fmt.Printf("%x\n", protocol.messageInCreation)
+
+	return protocol.messageInCreation
+}
+
+func (protocol *Protocol) addCodeToMessage(code int) {
+	messageCode := uint16(code)
+	binary.BigEndian.PutUint16(protocol.messageInCreation[protocol.lenWritten:], messageCode)
+	protocol.lenWritten += CodeLegth
+}
+
+func (protocol *Protocol) addIntToMessage(number int) {
+	messageNumber := uint32(number)
+	binary.BigEndian.PutUint32(protocol.messageInCreation[protocol.lenWritten:], messageNumber)
+	protocol.lenWritten += IntLength
+}
+
+func (protocol *Protocol) addStringToMessage(text string) {
+	stringBytes := []byte(text) 
+	copy(protocol.messageInCreation[protocol.lenWritten:], stringBytes)
+	protocol.lenWritten += len(stringBytes)
+}
+
+func (protocol *Protocol) addVariableLenStringToMessage(text string) {
+	protocol.addIntToMessage(len(text))
+	protocol.addStringToMessage(text)
+}
+
+func (protocol *Protocol) addIntFromStringToMessage(textNumber string) {
+	intValue, _ := strconv.Atoi(textNumber)
+	protocol.addIntToMessage(intValue)
 }

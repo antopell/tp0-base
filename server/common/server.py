@@ -2,6 +2,8 @@ import socket
 import logging
 import signal
 
+from protocol.protocol import *
+from common.utils import *
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -10,6 +12,7 @@ class Server:
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self.continue_running = True
+        self.protocol = Protocol()
 
     def _graceful_exit(self, _sig, _frame):
         self._server_socket.shutdown(socket.SHUT_RDWR)
@@ -42,12 +45,13 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
+            bets = self.__getMessage(client_sock)
+            store_bets(bets)
             addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bets[0].document} | numero: {bets[0].number}')
+            
             # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
+            # client_sock.send("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
@@ -67,3 +71,20 @@ class Server:
         c, addr = self._server_socket.accept()
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c
+    
+    def __getMessage(self, client_sock: socket.socket):
+        read_amount = self.protocol.define_initial_buffer_size()
+        message = bytearray()
+        self.__full_recv(message, read_amount, client_sock)
+        
+        read_amount = self.protocol.define_msg_len(message)
+        self.__full_recv(message, read_amount, client_sock)
+
+        return self.protocol.decode(message)
+        
+    def __full_recv(self, buffer: bytearray, amount_to_read: int, socket: socket.socket):
+        amount_read = 0
+        while amount_read < amount_to_read:
+            msg = socket.recv(amount_to_read - amount_read)
+            buffer.extend(msg)
+            amount_read += len(msg)

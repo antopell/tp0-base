@@ -1,0 +1,79 @@
+from common.utils import *
+import logging
+
+BET_CODE = 1
+AGENCY_CODE = 1
+NAME_CODE = 2
+SURNAME_CODE = 3
+DOCUMENT_CODE = 4
+BIRTHDATE_CODE = 5
+BETNUMBER_CODE = 6
+
+INT_LENGTH = 4
+CODE_LENGTH = 2
+ISODATE_LENGTH = 10
+
+class Protocol:
+  def __init__(self):
+    pass
+    
+
+  def define_initial_buffer_size(self):
+    return CODE_LENGTH + INT_LENGTH 
+  
+  def define_msg_len(self, initial_msg: bytearray):
+    msg_code = int.from_bytes(initial_msg[:CODE_LENGTH ], byteorder='big')
+    msg_len = int.from_bytes(initial_msg[CODE_LENGTH:CODE_LENGTH + INT_LENGTH ], byteorder='big')
+    return msg_len
+  
+  def decode(self, msg: bytearray):
+    msg_code = int.from_bytes(msg[:CODE_LENGTH], byteorder='big')
+
+    final_msg = []
+    if msg_code == BET_CODE:
+      final_msg.append(self.__decode_bet_msg(msg))
+    return final_msg
+  
+  def __decode_bet_msg(self, msg) -> Bet:
+    amount_read = CODE_LENGTH
+    msg_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
+    
+    amount_read += INT_LENGTH
+    total_len = msg_len + CODE_LENGTH
+    
+    bet = Bet("0", "", "", "", datetime.date.min.isoformat(), "0")
+    while amount_read < total_len:
+      code: int = int.from_bytes(msg[amount_read:amount_read + CODE_LENGTH ], byteorder='big')
+      amount_read += CODE_LENGTH
+      
+      if code == AGENCY_CODE:
+        bet.agency, amount_read = self.__decode_int_to_str(msg, amount_read)
+      elif code == NAME_CODE:
+        bet.first_name, amount_read = self.__decode_variable_str(msg, amount_read)
+      elif code == SURNAME_CODE:
+        bet.last_name, amount_read = self.__decode_variable_str(msg, amount_read)
+      elif code == DOCUMENT_CODE:
+        bet.document, amount_read = self.__decode_int_to_str(msg, amount_read)
+      elif code == BIRTHDATE_CODE:
+        bet.birthdate, amount_read = self.__decode_iso_date(msg, amount_read)
+      elif code == BETNUMBER_CODE:
+        bet.number, amount_read = self.__decode_int_to_str(msg, amount_read)
+      else:
+        logging.error(f"Invalid code number found: {code}")
+        return None
+      
+    return bet
+
+  def __decode_int_to_str(self, msg: bytearray, amount_read: int):
+    number = str(int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big'))
+    return number, amount_read + INT_LENGTH
+  
+  def __decode_variable_str(self, msg: bytearray, amount_read: int):
+    string_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
+    amount_read += INT_LENGTH
+    string = (msg[amount_read:amount_read + string_len]).decode('utf-8')
+    return string, amount_read + string_len
+  
+  def __decode_iso_date(self, msg: bytearray, amount_read: int):
+    birtdateISO = (msg[amount_read:amount_read + ISODATE_LENGTH]).decode('utf-8')
+    return datetime.date.fromisoformat(birtdateISO), amount_read + ISODATE_LENGTH

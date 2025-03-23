@@ -99,9 +99,9 @@ func (c *Client) StartClientLoop() {
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 
-		// TODO: create message and send it
 		data := c.data
-		c.protocol.CreateBetMessage(data.Name, data.Surname, data.Dni, data.BirthDateISO, data.BettingNumber)
+		message := c.protocol.CreateBetMessage(c.config.ID, data.Name, data.Surname, data.Dni, data.BirthDateISO, data.BettingNumber)
+		c.sendMessage(message)
 
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()

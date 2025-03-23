@@ -8,8 +8,9 @@ import (
 
 
 const IntLength = 4
-const CodeLegth = 2
-const ISODateLegth = 10
+const CodeLength = 2
+const ISODateLength = 10
+const EofLength = 1
 
 // Protocol Entity that encapsulates the creation
 // of messages
@@ -26,27 +27,37 @@ func NewProtocol() *Protocol {
 
 // TODO: ver donde conviene tener esta informacion
 const BetCode = 1
-const NameCode = 1
-const SurnameCode = 2
-const DNICode = 3
-const BirthDateCode = 4
-const BetNumberCode = 5
+const AgencyCode = 1
+const NameCode = 2
+const SurnameCode = 3
+const DNICode = 4
+const BirthDateCode = 5
+const BetNumberCode = 6
 
 // CreateBetMessage Creates a message with the bet info ready to be sent in bytes
-func (protocol *Protocol) CreateBetMessage(name string, surname string, dni string, birthDateISO string, betNumber string) []byte {
+func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, surname string, dni string, birthDateISO string, betNumber string) []byte {
 	// Bet message structure:
-	// 1|1|<largo>|<nombre>|2|<largo>|<apellido>|3|<dni>|4|<fecha>|5|<numero>
+	// 1|<len>
+	// 	<AgencyCode>|<numAgencia>|
+	// 	<NameCode>|<len>|<name>|
+	// 	<SurnameCode>|<len>|<surname>|
+	// 	<DNICode>|<dni>|
+	// 	<BirthDateCode>|<birthDate>|
+	// 	<BetNumberCode>|<number>
 
-	// cantidad codigos: 6 (5 campos + codigo inicial)
-	// cantidad int: 4 (2 largos + dni + numero)
-	nameLen := len(name)
-	surnameLen := len(surname)
-	lenMessage := CodeLegth * 6 + IntLength * 4 + nameLen + surnameLen + ISODateLegth
+	// amount codes: 7 (6 campos + codigo inicial)
+	// amount int: 6 (agencyNumber + 3 len + dni + number)
+	lenMessage := CodeLength * 6 + IntLength * 5 + len(name) + len(surname) + ISODateLength
+	totalLen := CodeLength + IntLength + lenMessage + EofLength
 	
-	protocol.messageInCreation = make([]byte, lenMessage)
+	protocol.messageInCreation = make([]byte, totalLen)
 	protocol.lenWritten = 0
 
 	protocol.addCodeToMessage(BetCode)
+	protocol.addIntToMessage(lenMessage)
+
+	protocol.addCodeToMessage(AgencyCode)
+	protocol.addIntFromStringToMessage(agencyNumber)
 
 	protocol.addCodeToMessage(NameCode)
 	protocol.addVariableLenStringToMessage(name)
@@ -63,6 +74,7 @@ func (protocol *Protocol) CreateBetMessage(name string, surname string, dni stri
 	protocol.addCodeToMessage(BetNumberCode)
 	protocol.addIntFromStringToMessage(betNumber)
 
+	protocol.addEofToMessage()
 
 	fmt.Printf("%x\n", protocol.messageInCreation)
 
@@ -72,7 +84,7 @@ func (protocol *Protocol) CreateBetMessage(name string, surname string, dni stri
 func (protocol *Protocol) addCodeToMessage(code int) {
 	messageCode := uint16(code)
 	binary.BigEndian.PutUint16(protocol.messageInCreation[protocol.lenWritten:], messageCode)
-	protocol.lenWritten += CodeLegth
+	protocol.lenWritten += CodeLength
 }
 
 func (protocol *Protocol) addIntToMessage(number int) {
@@ -95,4 +107,9 @@ func (protocol *Protocol) addVariableLenStringToMessage(text string) {
 func (protocol *Protocol) addIntFromStringToMessage(textNumber string) {
 	intValue, _ := strconv.Atoi(textNumber)
 	protocol.addIntToMessage(intValue)
+}
+
+func (protocol *Protocol) addEofToMessage() {
+	eof := []byte("\x00")
+	copy(protocol.messageInCreation[protocol.lenWritten:], eof)
 }

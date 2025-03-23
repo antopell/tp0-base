@@ -88,13 +88,6 @@ func PrintConfig(v *viper.Viper) {
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
 	)
-	log.Infof("action: data | result: success | name: %s | surname: %s | dni: %v | birthdate: %v | bet: %s",
-		os.Getenv("NOMBRE"),
-		os.Getenv("APELLIDO"),
-		os.Getenv("DOCUMENTO"),
-		os.Getenv("NACIMIENTO"),
-		os.Getenv("NUMERO"),
-	)
 }
 
 func main() {

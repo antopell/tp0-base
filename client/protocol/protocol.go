@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"encoding/binary"
-	"fmt"
+	// "fmt"
 	"strconv"
 )
 
@@ -10,6 +10,7 @@ import (
 const IntLength = 4
 const CodeLength = 2
 const ISODateLength = 10
+const BoolLength = 1
 
 // Protocol Entity that encapsulates the creation
 // of messages
@@ -32,6 +33,8 @@ const SurnameCode = 3
 const DNICode = 4
 const BirthDateCode = 5
 const BetNumberCode = 6
+
+const AckBetCode = 2
 
 // CreateBetMessage Creates a message with the bet info ready to be sent in bytes
 func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, surname string, dni string, birthDateISO string, betNumber string) []byte {
@@ -73,8 +76,6 @@ func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, sur
 	protocol.addCodeToMessage(BetNumberCode)
 	protocol.addIntFromStringToMessage(betNumber)
 
-	fmt.Printf("%x\n", protocol.messageInCreation)
-
 	return protocol.messageInCreation
 }
 
@@ -104,4 +105,14 @@ func (protocol *Protocol) addVariableLenStringToMessage(text string) {
 func (protocol *Protocol) addIntFromStringToMessage(textNumber string) {
 	intValue, _ := strconv.Atoi(textNumber)
 	protocol.addIntToMessage(intValue)
+}
+
+func (protocol *Protocol) DecodeAck(message []byte) bool {
+	value := message[CodeLength:] // 1 byte
+	trueByte := []byte{1} 
+	return value[0] == trueByte[0]
+}
+
+func (protocol *Protocol) GetBufferLenAck() int {
+	return CodeLength + BoolLength
 }

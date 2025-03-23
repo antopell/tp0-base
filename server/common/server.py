@@ -47,13 +47,11 @@ class Server:
         try:
             bets = self.__getMessage(client_sock)
             store_bets(bets)
-            addr = client_sock.getpeername()
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bets[0].document} | numero: {bets[0].number}')
             
-            # TODO: Modify the send to avoid short-writes
-            # client_sock.send("{}\n".format(msg).encode('utf-8'))
+            self.__send_ack(True, client_sock)
         except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
+            logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.shutdown(socket.SHUT_WR) # allows reading
             client_sock.close()
@@ -88,3 +86,7 @@ class Server:
             msg = socket.recv(amount_to_read - amount_read)
             buffer.extend(msg)
             amount_read += len(msg)
+    
+    def __send_ack(self, result: bool, socket: socket.socket):
+        message = self.protocol.create_ack_msg(result)
+        socket.sendall(message)

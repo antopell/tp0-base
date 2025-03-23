@@ -1,7 +1,7 @@
 package common
 
 import (
-	"bufio"
+	// "bufio"
 	// "fmt"
 	"net"
 	"time"
@@ -94,43 +94,65 @@ func (c *Client) StartClientLoop() {
 
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+	// for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
 
-		// Create the connection the server in every loop iteration. Send an
-		c.createClientSocket()
+	c.createClientSocket()
 
-		data := c.data
-		message := c.protocol.CreateBetMessage(c.config.ID, data.Name, data.Surname, data.Dni, data.BirthDateISO, data.BettingNumber)
-		c.sendMessage(message)
+	data := c.data
+	message := c.protocol.CreateBetMessage(c.config.ID, data.Name, data.Surname, data.Dni, data.BirthDateISO, data.BettingNumber)
+	c.sendMessage(message)
 
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
-		c.conn.Close()
+	msg := c.getAck()
+	if msg {
+		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v",
+			data.Dni,
+			data.BettingNumber,
+		)
+	} else {
+		log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",
+			data.Dni,
+			data.BettingNumber,
+		)
+	}
+	
+	
+	c.conn.Close()
 
-		select {
-		case sig := <-signalChannel:
-			// c.conn should be closed by now 
-			c.conn.Close() // just in case
-			log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
-			return
-		default:
-		}
+	select {
+	case sig := <-signalChannel:
+		// c.conn should be closed by now 
+		c.conn.Close() // just in case
+		log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
+		return
+	default:
+	}
+
+	// }
+	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+}
+
+func (c *Client) getAck() bool {
+	lenAck := c.protocol.GetBufferLenAck()
+
+	message := c.full_read(lenAck)
+	result := c.protocol.DecodeAck(message)
+	return result
+}
+
+func (c *Client) full_read(amountToRead int) []byte {
+	amountRead := 0
+	fullmessage := make([]byte, amountToRead)
+	for amountRead < amountToRead {
+		read, err := c.conn.Read(fullmessage)
+		amountRead += read
 
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
 				c.config.ID,
 				err,
 			)
-			return
+			return nil
 		}
-
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-			c.config.ID,
-			msg,
-		)
-
-		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
-
 	}
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+	return fullmessage
 }

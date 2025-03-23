@@ -9,9 +9,12 @@ DOCUMENT_CODE = 4
 BIRTHDATE_CODE = 5
 BETNUMBER_CODE = 6
 
+ACK_BET_CODE = 2
+
 INT_LENGTH = 4
 CODE_LENGTH = 2
 ISODATE_LENGTH = 10
+BOOL_LENGTH = 1
 
 class Protocol:
   def __init__(self):
@@ -77,3 +80,13 @@ class Protocol:
   def __decode_iso_date(self, msg: bytearray, amount_read: int):
     birtdateISO = (msg[amount_read:amount_read + ISODATE_LENGTH]).decode('utf-8')
     return datetime.date.fromisoformat(birtdateISO), amount_read + ISODATE_LENGTH
+
+
+  def create_ack_msg(self, result: bool):
+    message = bytearray()
+    # code|<result>
+    message.extend(ACK_BET_CODE.to_bytes(CODE_LENGTH, byteorder='big'))
+    message.extend(result.to_bytes(BOOL_LENGTH, byteorder='big'))
+    return message
+  
+  

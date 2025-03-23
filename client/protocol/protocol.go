@@ -10,7 +10,6 @@ import (
 const IntLength = 4
 const CodeLength = 2
 const ISODateLength = 10
-const EofLength = 1
 
 // Protocol Entity that encapsulates the creation
 // of messages
@@ -48,7 +47,7 @@ func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, sur
 	// amount codes: 7 (6 campos + codigo inicial)
 	// amount int: 6 (agencyNumber + 3 len + dni + number)
 	lenMessage := CodeLength * 6 + IntLength * 5 + len(name) + len(surname) + ISODateLength
-	totalLen := CodeLength + IntLength + lenMessage + EofLength
+	totalLen := CodeLength + IntLength + lenMessage
 	
 	protocol.messageInCreation = make([]byte, totalLen)
 	protocol.lenWritten = 0
@@ -73,8 +72,6 @@ func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, sur
 
 	protocol.addCodeToMessage(BetNumberCode)
 	protocol.addIntFromStringToMessage(betNumber)
-
-	protocol.addEofToMessage()
 
 	fmt.Printf("%x\n", protocol.messageInCreation)
 
@@ -107,9 +104,4 @@ func (protocol *Protocol) addVariableLenStringToMessage(text string) {
 func (protocol *Protocol) addIntFromStringToMessage(textNumber string) {
 	intValue, _ := strconv.Atoi(textNumber)
 	protocol.addIntToMessage(intValue)
-}
-
-func (protocol *Protocol) addEofToMessage() {
-	eof := []byte("\x00")
-	copy(protocol.messageInCreation[protocol.lenWritten:], eof)
 }

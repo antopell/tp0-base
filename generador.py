@@ -11,6 +11,7 @@ def generar(nombre, cant_clientes):
 	with open(nombre, "w") as archivo:
 		path_server = "./server/config.ini"
 		path_cliente = "./client/config.yaml"
+		path_data = ".data/agency-"
 		contenido = "name: tp0\n"
 		contenido += "services:\n"
 
@@ -38,11 +39,6 @@ def generar(nombre, cant_clientes):
 			contenido += "    entrypoint: /client\n"
 			contenido += "    environment:\n"
 			contenido += "      - CLI_ID=" + num_string + "\n"
-			contenido += "      - NOMBRE=" + random.choice(lista_nombres) + "\n"
-			contenido += "      - APELLIDO=" + random.choice(lista_apellidos) + "\n"
-			contenido += "      - DOCUMENTO=" + random.choice(lista_dni) + "\n"
-			contenido += "      - NACIMIENTO=" + random.choice(lista_nacimiento) + "\n"
-			contenido += "      - NUMERO=" + str(random.randint(1000, 9999)) + "\n"
 
 			contenido += "    networks:\n"
 			contenido += "      - testing_net\n"
@@ -51,6 +47,7 @@ def generar(nombre, cant_clientes):
 
 			contenido += "    volumes:\n"
 			contenido += "      - " + path_cliente + ":/config.yaml\n"
+			contenido += "      - " + path_data + num_string + ".csv:/agencyFile.csv\n"
 			contenido += "\n"
 				
 		# network

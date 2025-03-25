@@ -16,12 +16,18 @@ const BoolLength = 1
 // of messages
 type Protocol struct {
 	messageInCreation []byte
+	amountBets				int
 	lenWritten				int
+	agencyNumber 			string
+	maxAmount					int
 }
 
 // NewProtocol Initializes a new protocol
-func NewProtocol() *Protocol {
-	protocol := &Protocol{}
+func NewProtocol(agencyNumber string, batchMaxAmount int) *Protocol {
+	protocol := &Protocol{
+		agencyNumber: agencyNumber,
+		maxAmount: batchMaxAmount,
+	}
 	return protocol
 }
 
@@ -37,7 +43,7 @@ const BetNumberCode = 6
 const AckBetCode = 2
 
 // CreateBetMessage Creates a message with the bet info ready to be sent in bytes
-func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, surname string, document string, birthDateISO string, betNumber string) []byte {
+func (protocol *Protocol) CreateBetMessage(name string, surname string, document string, birthDateISO string, betNumber string) []byte {
 	// Bet message structure:
 	// 1|<len>
 	// 	<AgencyCode>|<numAgencia>|
@@ -58,7 +64,7 @@ func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, sur
 
 	protocol.addInt(BetCode, lenMessage)
 
-	protocol.addIntFromString(AgencyCode, agencyNumber)
+	protocol.addIntFromString(AgencyCode, protocol.agencyNumber)
 
 	protocol.addVariableLenString(NameCode, name)
 
@@ -71,6 +77,19 @@ func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, sur
 	protocol.addIntFromString(BetNumberCode, betNumber)
 
 	return protocol.messageInCreation
+}
+
+func (protocol *Protocol) AddToBatch(name string, surname string, document string, birthDateISO string, betNumber string) bool {
+
+	return false
+}
+
+func (protocol *Protocol) GetBatchMessage() ([]byte, int) {
+	msg := protocol.messageInCreation
+	protocol.messageInCreation = make([]byte, 1)
+	amount := protocol.amountBets
+	protocol.amountBets = 0
+	return msg, amount
 }
 
 func (protocol *Protocol) addCodeToMessage(code int) {

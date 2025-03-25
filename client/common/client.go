@@ -1,10 +1,11 @@
 package common
 
 import (
-	// "bufio"
+	"bufio"
 	// "fmt"
 	"net"
 	"time"
+	"strings"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,14 +18,15 @@ var log = logging.MustGetLogger("log")
 
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
-	ID            string
-	ServerAddress string
-	LoopAmount    int
-	LoopPeriod    time.Duration
+	ID            	string
+	ServerAddress 	string
+	LoopAmount    	int
+	LoopPeriod    	time.Duration
+	BatchMaxAmount	int
 }
 
-// ClientData General information of the client
-type ClientData struct {
+// BetData Base information of the bet to send
+type BetData struct {
 	Name					string
 	Surname				string
 	Document			string
@@ -36,17 +38,15 @@ type ClientData struct {
 type Client struct {
 	config		ClientConfig
 	conn			net.Conn
-	data 			ClientData
 	protocol 	protocol.Protocol
 }
 
 // NewClient Initializes a new client receiving the configuration
 // as a parameter
-func NewClient(config ClientConfig, data ClientData) *Client {
+func NewClient(config ClientConfig) *Client {
 	client := &Client{
 		config: config,
-		data: data,
-		protocol: *protocol.NewProtocol(),
+		protocol: *protocol.NewProtocol(config.ID, config.BatchMaxAmount),
 	}
 	return client
 }
@@ -92,42 +92,43 @@ func (c *Client) StartClientLoop() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, syscall.SIGINT)
 
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-	// for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+	file, err := os.Open("./agencyFile.csv")
+	if err != nil {
+		log.Criticalf(
+			"action: open file | result: fail | error: %v",
+			err,
+		)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
 
 	c.createClientSocket()
+	defer c.conn.Close()
 
-	data := c.data
-	message := c.protocol.CreateBetMessage(c.config.ID, data.Name, data.Surname, data.Document, data.BirthDateISO, data.BettingNumber)
-	c.sendMessage(message)
+	for scanner.Scan() {
+		line := scanner.Text()
+		log.Infof("line:  %v", line)
 
-	msg := c.getAck()
-	if msg {
-		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v",
-			data.Document,
-			data.BettingNumber,
-		)
-	} else {
-		log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",
-			data.Document,
-			data.BettingNumber,
-		)
+		betData, failed := c.lineToBetData(line)
+		if failed {
+			continue
+		}
+
+		readyToSend := c.protocol.AddToBatch(betData.Name, betData.Surname, betData.Document, betData.BirthDateISO, betData.BettingNumber)
+		if readyToSend {
+			c.sendBatch()
+		}
+		
+
+		select {
+		case sig := <-signalChannel:
+			log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
+			return
+		default:
+		}
+
 	}
-	
-	
-	c.conn.Close()
-
-	select {
-	case sig := <-signalChannel:
-		// c.conn should be closed by now 
-		c.conn.Close() // just in case
-		log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
-		return
-	default:
-	}
-
-	// }
+	c.sendBatch()
 	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
@@ -155,4 +156,39 @@ func (c *Client) full_read(amountToRead int) []byte {
 		}
 	}
 	return fullmessage
+}
+
+
+func (c *Client) lineToBetData(line string) (BetData, bool) {
+	fields := strings.Split(line, ",")
+	if len(fields) < 5 {
+		log.Errorf("action: parse line | result: fail | Not enough fields")
+		return BetData{}, true
+	}
+	betData := BetData{
+		Name:						fields[0],
+		Surname:				fields[1],
+		Document:				fields[2],
+		BirthDateISO:		fields[3],
+		BettingNumber:	fields[4],
+	}
+
+	return betData, false
+
+}
+
+func (c *Client) sendBatch() {
+	message, amountBets := c.protocol.GetBatchMessage()
+	c.sendMessage(message)
+
+	msg := c.getAck()
+	if msg {
+		log.Infof("action: apuesta_enviada | result: success | amount: %v",
+			amountBets,
+		)
+	} else {
+		log.Infof("action: apuesta_enviada | result: fail | amount: %v",
+			amountBets,
+		)
+	}
 }

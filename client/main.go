@@ -37,6 +37,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "amount")
 	v.BindEnv("log", "level")
+	v.BindEnv("batch", "maxAmount")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -104,20 +105,13 @@ func main() {
 	PrintConfig(v)
 
 	clientConfig := common.ClientConfig{
-		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
-		LoopAmount:    v.GetInt("loop.amount"),
-		LoopPeriod:    v.GetDuration("loop.period"),
+		ServerAddress: 	v.GetString("server.address"),
+		ID:            	v.GetString("id"),
+		LoopAmount:    	v.GetInt("loop.amount"),
+		LoopPeriod:    	v.GetDuration("loop.period"),
+		BatchMaxAmount:	v.GetInt("batch.maxAmount"),
 	}
 
-	clientData := common.ClientData{
-		Name:						os.Getenv("NOMBRE"),
-		Surname:				os.Getenv("APELLIDO"),
-		Document:				os.Getenv("DOCUMENTO"),
-		BirthDateISO:		os.Getenv("NACIMIENTO"),
-		BettingNumber:	os.Getenv("NUMERO"),
-	}
-
-	client := common.NewClient(clientConfig, clientData)
+	client := common.NewClient(clientConfig)
 	client.StartClientLoop()
 }

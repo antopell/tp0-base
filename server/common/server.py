@@ -45,11 +45,13 @@ class Server:
         client socket will also be closed
         """
         try:
-            bets = self.__getMessage(client_sock)
-            store_bets(bets)
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bets[0].document} | numero: {bets[0].number}')
-            
-            self.__send_ack(True, client_sock)
+            batch_ended = False
+            while not batch_ended:
+                bets = self.__getMessage(client_sock)
+                store_bets(bets)
+                logging.info(f'action: apuesta_almacenada | result: success | dni: {bets[0].document} | numero: {bets[0].number}')
+                
+                self.__send_ack(True, client_sock)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:

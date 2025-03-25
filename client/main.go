@@ -113,7 +113,7 @@ func main() {
 	clientData := common.ClientData{
 		Name:						os.Getenv("NOMBRE"),
 		Surname:				os.Getenv("APELLIDO"),
-		Dni:						os.Getenv("DOCUMENTO"),
+		Document:				os.Getenv("DOCUMENTO"),
 		BirthDateISO:		os.Getenv("NACIMIENTO"),
 		BettingNumber:	os.Getenv("NUMERO"),
 	}

@@ -27,7 +27,7 @@ type ClientConfig struct {
 type ClientData struct {
 	Name					string
 	Surname				string
-	Dni						string
+	Document			string
 	BirthDateISO	string
 	BettingNumber string
 }
@@ -99,18 +99,18 @@ func (c *Client) StartClientLoop() {
 	c.createClientSocket()
 
 	data := c.data
-	message := c.protocol.CreateBetMessage(c.config.ID, data.Name, data.Surname, data.Dni, data.BirthDateISO, data.BettingNumber)
+	message := c.protocol.CreateBetMessage(c.config.ID, data.Name, data.Surname, data.Document, data.BirthDateISO, data.BettingNumber)
 	c.sendMessage(message)
 
 	msg := c.getAck()
 	if msg {
 		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v",
-			data.Dni,
+			data.Document,
 			data.BettingNumber,
 		)
 	} else {
 		log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",
-			data.Dni,
+			data.Document,
 			data.BettingNumber,
 		)
 	}

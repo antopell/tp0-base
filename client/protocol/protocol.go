@@ -30,51 +30,45 @@ const BetCode = 1
 const AgencyCode = 1
 const NameCode = 2
 const SurnameCode = 3
-const DNICode = 4
+const DocumentCode = 4
 const BirthDateCode = 5
 const BetNumberCode = 6
 
 const AckBetCode = 2
 
 // CreateBetMessage Creates a message with the bet info ready to be sent in bytes
-func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, surname string, dni string, birthDateISO string, betNumber string) []byte {
+func (protocol *Protocol) CreateBetMessage(agencyNumber string, name string, surname string, document string, birthDateISO string, betNumber string) []byte {
 	// Bet message structure:
 	// 1|<len>
 	// 	<AgencyCode>|<numAgencia>|
 	// 	<NameCode>|<len>|<name>|
 	// 	<SurnameCode>|<len>|<surname>|
-	// 	<DNICode>|<dni>|
+	// 	<DocumentCode>|<document>|
 	// 	<BirthDateCode>|<birthDate>|
 	// 	<BetNumberCode>|<number>
 
 	// amount codes: 7 (6 campos + codigo inicial)
-	// amount int: 6 (agencyNumber + 3 len + dni + number)
+	// amount int: 6 (agencyNumber + 3 len + document + number)
 	lenMessage := CodeLength * 6 + IntLength * 5 + len(name) + len(surname) + ISODateLength
 	totalLen := CodeLength + IntLength + lenMessage
 	
 	protocol.messageInCreation = make([]byte, totalLen)
 	protocol.lenWritten = 0
 
-	protocol.addCodeToMessage(BetCode)
-	protocol.addIntToMessage(lenMessage)
 
-	protocol.addCodeToMessage(AgencyCode)
-	protocol.addIntFromStringToMessage(agencyNumber)
+	protocol.addInt(BetCode, lenMessage)
 
-	protocol.addCodeToMessage(NameCode)
-	protocol.addVariableLenStringToMessage(name)
+	protocol.addIntFromString(AgencyCode, agencyNumber)
 
-	protocol.addCodeToMessage(SurnameCode)
-	protocol.addVariableLenStringToMessage(surname)
+	protocol.addVariableLenString(NameCode, name)
 
-	protocol.addCodeToMessage(DNICode)
-	protocol.addIntFromStringToMessage(dni)
+	protocol.addVariableLenString(SurnameCode, surname)
 
-	protocol.addCodeToMessage(BirthDateCode)
-	protocol.addStringToMessage(birthDateISO)
+	protocol.addIntFromString(DocumentCode, document)
 
-	protocol.addCodeToMessage(BetNumberCode)
-	protocol.addIntFromStringToMessage(betNumber)
+	protocol.addString(BirthDateCode, birthDateISO)
+
+	protocol.addIntFromString(BetNumberCode, betNumber)
 
 	return protocol.messageInCreation
 }
@@ -105,6 +99,26 @@ func (protocol *Protocol) addVariableLenStringToMessage(text string) {
 func (protocol *Protocol) addIntFromStringToMessage(textNumber string) {
 	intValue, _ := strconv.Atoi(textNumber)
 	protocol.addIntToMessage(intValue)
+}
+
+func (protocol *Protocol) addIntFromString(code int, textNumber string) {
+	protocol.addCodeToMessage(code)
+	protocol.addIntFromStringToMessage(textNumber)
+}
+
+func (protocol *Protocol) addVariableLenString(code int, text string){
+	protocol.addCodeToMessage(code)
+	protocol.addVariableLenStringToMessage(text)
+}
+
+func (protocol *Protocol) addInt(code int, number int) {
+	protocol.addCodeToMessage(code)
+	protocol.addIntToMessage(number)
+}
+
+func (protocol *Protocol) addString(code int, text string) {
+	protocol.addCodeToMessage(code)
+	protocol.addStringToMessage(text)
 }
 
 func (protocol *Protocol) DecodeAck(message []byte) bool {

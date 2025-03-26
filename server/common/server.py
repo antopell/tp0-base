@@ -54,7 +54,7 @@ class Server:
                     if success:
                         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
                     else:
-                        logging.info(f'action: apuesta_recibida | result: fail | cantidad: ${len(bets)}')
+                        logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
                 
                     self.__send_ack(success, client_sock)
         except OSError as e:

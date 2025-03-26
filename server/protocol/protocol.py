@@ -41,8 +41,8 @@ class Protocol:
       bet, _ = self.__decode_bet_msg(msg, CODE_LENGTH)
       bets.append(bet)
     elif msg_code == BATCH_BET_CODE:
-      bets, amount_bets = self.__decode_batch_bet_msg(msg)
-      bets.extend(bets)
+      new_bets, amount_bets = self.__decode_batch_bet_msg(msg)
+      bets.extend(new_bets)
     return bets, amount_bets
   
 

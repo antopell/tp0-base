@@ -1,6 +1,9 @@
 from common.utils import *
 import logging
 
+BATCH_BET_CODE = 2
+AGENCY_BATCH_CODE = 2
+
 BET_CODE = 1
 AGENCY_CODE = 1
 NAME_CODE = 2
@@ -9,7 +12,7 @@ DOCUMENT_CODE = 4
 BIRTHDATE_CODE = 5
 BETNUMBER_CODE = 6
 
-ACK_BET_CODE = 2
+ACK_BET_CODE = 3
 
 INT_LENGTH = 4
 CODE_LENGTH = 2
@@ -34,17 +37,41 @@ class Protocol:
 
     final_msg = []
     if msg_code == BET_CODE:
-      final_msg.append(self.__decode_bet_msg(msg))
+      bet, _ = self.__decode_bet_msg(msg, CODE_LENGTH)
+      final_msg.append(bet)
+    elif msg_code == BATCH_BET_CODE:
+      final_msg.extend(self.__decode_batch_bet_msg(msg))
     return final_msg
   
-  def __decode_bet_msg(self, msg) -> Bet:
+
+  def __decode_batch_bet_msg(self, msg):
     amount_read = CODE_LENGTH
     msg_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
     
     amount_read += INT_LENGTH
-    total_len = msg_len + CODE_LENGTH
+    total_len = msg_len + amount_read
+    bets = []
+    agency_number = 0
+    while amount_read < total_len:
+      code: int = int.from_bytes(msg[amount_read:amount_read + CODE_LENGTH ], byteorder='big')
+      amount_read += CODE_LENGTH
+      
+      if code == AGENCY_BATCH_CODE:
+        agency_number, amount_read = self.__decode_int_to_str(msg, amount_read)
+      elif code == BET_CODE:
+        bet, amount_read = self.__decode_bet_msg(msg, amount_read, agency_number)
+        bets.append(bet)
+      else:
+        logging.error(f"Invalid code number found: {code}")
+        return []
+    return bets
+
+  def __decode_bet_msg(self, msg, amount_read, agency_number = "0"):
+    msg_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
     
-    bet = Bet("0", "", "", "", datetime.date.min.isoformat(), "0")
+    amount_read += INT_LENGTH
+    total_len = msg_len + amount_read
+    bet = Bet(agency_number, "", "", "", datetime.date.min.isoformat(), "0")
     while amount_read < total_len:
       code: int = int.from_bytes(msg[amount_read:amount_read + CODE_LENGTH ], byteorder='big')
       amount_read += CODE_LENGTH
@@ -63,9 +90,9 @@ class Protocol:
         bet.number, amount_read = self.__decode_int_to_str(msg, amount_read)
       else:
         logging.error(f"Invalid code number found: {code}")
-        return None
-      
-    return bet
+        return None, amount_read
+    
+    return bet, amount_read
 
   def __decode_int_to_str(self, msg: bytearray, amount_read: int):
     number = str(int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big'))

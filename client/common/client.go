@@ -107,7 +107,6 @@ func (c *Client) StartClientLoop() {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		log.Infof("line:  %v", line)
 
 		betData, failed := c.lineToBetData(line)
 		if failed {
@@ -178,17 +177,14 @@ func (c *Client) lineToBetData(line string) (BetData, bool) {
 }
 
 func (c *Client) sendBatch() {
-	message, amountBets := c.protocol.GetBatchMessage()
+	message := c.protocol.GetBatchMessage()
+	log.Infof("Mensaje: %x", message)
 	c.sendMessage(message)
 
 	msg := c.getAck()
 	if msg {
-		log.Infof("action: apuesta_enviada | result: success | amount: %v",
-			amountBets,
-		)
+		log.Infof("action: apuesta_enviada | result: success")
 	} else {
-		log.Infof("action: apuesta_enviada | result: fail | amount: %v",
-			amountBets,
-		)
+		log.Infof("action: apuesta_enviada | result: fail")
 	}
 }

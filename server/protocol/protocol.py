@@ -35,16 +35,18 @@ class Protocol:
   def decode(self, msg: bytearray):
     msg_code = int.from_bytes(msg[:CODE_LENGTH], byteorder='big')
 
-    final_msg = []
+    bets = []
+    amount_bets = 1
     if msg_code == BET_CODE:
       bet, _ = self.__decode_bet_msg(msg, CODE_LENGTH)
-      final_msg.append(bet)
+      bets.append(bet)
     elif msg_code == BATCH_BET_CODE:
-      final_msg.extend(self.__decode_batch_bet_msg(msg))
-    return final_msg
+      bets, amount_bets = self.__decode_batch_bet_msg(msg)
+      bets.extend(bets)
+    return bets, amount_bets
   
 
-  def __decode_batch_bet_msg(self, msg) -> int:
+  def __decode_batch_bet_msg(self, msg):
     amount_read = CODE_LENGTH
     msg_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
     

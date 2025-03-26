@@ -82,7 +82,6 @@ func (protocol *Protocol) createBetMessage(name string, surname string, document
 
 	protocol.addIntFromString(BetNumberCode, betNumber)
 
-	log.Infof("mensaje: %x", protocol.betInCreation)
 	return protocol.betInCreation
 }
 

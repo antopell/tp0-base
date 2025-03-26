@@ -47,15 +47,20 @@ class Server:
         try:
             batch_ended = False
             while not batch_ended:
-                bets = self.__getMessage(client_sock)
+                bets, amount, batch_ended = self.__getMessage(client_sock)
                 store_bets(bets)
-                logging.info(f'action: apuesta_almacenada | result: success | dni: {bets[0].document} | numero: {bets[0].number}')
+                if not batch_ended:
+                    success = len(bets) == amount
+                    if success:
+                        logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                    else:
+                        logging.info(f'action: apuesta_recibida | result: fail | cantidad: ${len(bets)}')
                 
-                self.__send_ack(True, client_sock)
+                    self.__send_ack(success, client_sock)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:
-            client_sock.shutdown(socket.SHUT_WR) # allows reading
+            # client_sock.shutdown(socket.SHUT_WR) # allows reading
             client_sock.close()
 
     def __accept_new_connection(self):
@@ -75,19 +80,23 @@ class Server:
     def __getMessage(self, client_sock: socket.socket):
         read_amount = self.protocol.define_initial_buffer_size()
         message = bytearray()
-        self.__full_recv(message, read_amount, client_sock)
-        
+        closed_socket = self.__full_recv(message, read_amount, client_sock)
+        if closed_socket:
+            return [], 0, closed_socket
         read_amount = self.protocol.define_msg_len(message)
-        self.__full_recv(message, read_amount, client_sock)
-
-        return self.protocol.decode(message)
+        closed_socket = self.__full_recv(message, read_amount, client_sock)
+        bets, amount_bets = self.protocol.decode(message)
+        return bets, amount_bets, closed_socket
         
-    def __full_recv(self, buffer: bytearray, amount_to_read: int, socket: socket.socket):
+    def __full_recv(self, buffer: bytearray, amount_to_read: int, socket: socket.socket) -> bool:
         amount_read = 0
         while amount_read < amount_to_read:
             msg = socket.recv(amount_to_read - amount_read)
+            if len(msg) == 0:
+                return True
             buffer.extend(msg)
             amount_read += len(msg)
+        return False
     
     def __send_ack(self, result: bool, socket: socket.socket):
         message = self.protocol.create_ack_msg(result)

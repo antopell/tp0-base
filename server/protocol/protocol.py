@@ -44,13 +44,14 @@ class Protocol:
     return final_msg
   
 
-  def __decode_batch_bet_msg(self, msg):
+  def __decode_batch_bet_msg(self, msg) -> int:
     amount_read = CODE_LENGTH
     msg_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
     
     amount_read += INT_LENGTH
     total_len = msg_len + amount_read
     bets = []
+    amount_bets = 0
     agency_number = 0
     while amount_read < total_len:
       code: int = int.from_bytes(msg[amount_read:amount_read + CODE_LENGTH ], byteorder='big')
@@ -59,12 +60,14 @@ class Protocol:
       if code == AGENCY_BATCH_CODE:
         agency_number, amount_read = self.__decode_int_to_str(msg, amount_read)
       elif code == BET_CODE:
+        amount_bets += 1
         bet, amount_read = self.__decode_bet_msg(msg, amount_read, agency_number)
-        bets.append(bet)
+        if bet != None:
+          bets.append(bet)
       else:
         logging.error(f"Invalid code number found: {code}")
-        return []
-    return bets
+        return bets, amount_bets
+    return bets, amount_bets
 
   def __decode_bet_msg(self, msg, amount_read, agency_number = "0"):
     msg_len = int.from_bytes(msg[amount_read:amount_read + INT_LENGTH ], byteorder='big')
@@ -76,21 +79,25 @@ class Protocol:
       code: int = int.from_bytes(msg[amount_read:amount_read + CODE_LENGTH ], byteorder='big')
       amount_read += CODE_LENGTH
       
-      if code == AGENCY_CODE:
-        bet.agency, amount_read = self.__decode_int_to_str(msg, amount_read)
-      elif code == NAME_CODE:
-        bet.first_name, amount_read = self.__decode_variable_str(msg, amount_read)
-      elif code == SURNAME_CODE:
-        bet.last_name, amount_read = self.__decode_variable_str(msg, amount_read)
-      elif code == DOCUMENT_CODE:
-        bet.document, amount_read = self.__decode_int_to_str(msg, amount_read)
-      elif code == BIRTHDATE_CODE:
-        bet.birthdate, amount_read = self.__decode_iso_date(msg, amount_read)
-      elif code == BETNUMBER_CODE:
-        bet.number, amount_read = self.__decode_int_to_str(msg, amount_read)
-      else:
-        logging.error(f"Invalid code number found: {code}")
-        return None, amount_read
+      try:
+        if code == AGENCY_CODE:
+          bet.agency, amount_read = self.__decode_int_to_str(msg, amount_read)
+        elif code == NAME_CODE:
+          bet.first_name, amount_read = self.__decode_variable_str(msg, amount_read)
+        elif code == SURNAME_CODE:
+          bet.last_name, amount_read = self.__decode_variable_str(msg, amount_read)
+        elif code == DOCUMENT_CODE:
+          bet.document, amount_read = self.__decode_int_to_str(msg, amount_read)
+        elif code == BIRTHDATE_CODE:
+          bet.birthdate, amount_read = self.__decode_iso_date(msg, amount_read)
+        elif code == BETNUMBER_CODE:
+          bet.number, amount_read = self.__decode_int_to_str(msg, amount_read)
+        else:
+          logging.error(f"Invalid code number found: {code}")
+          return None, total_len # don't return a bet but move to the next one
+      except (ValueError, UnicodeDecodeError) as e:
+        logging.error(f"Invalid value in param | Error: {e}")
+        return None, total_len # don't return a bet but move to the next one
     
     return bet, amount_read
 

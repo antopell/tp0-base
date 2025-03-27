@@ -5,17 +5,15 @@ import signal
 from protocol.protocol import *
 from common.utils import *
 
-AMOUNT_AGENCIES = 5
-
-
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, amount_agencies):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self.continue_running = True
         self.protocol = Protocol()
+        self.amount_agencies = int(amount_agencies)
 
     def _graceful_exit(self, _sig, _frame):
         self._server_socket.shutdown(socket.SHUT_RDWR)
@@ -37,7 +35,7 @@ class Server:
         signal.signal(signal.SIGINT, self._graceful_exit)
 
         clients_map = dict()
-        while self.continue_running and len(clients_map) != AMOUNT_AGENCIES:
+        while self.continue_running and len(clients_map) != self.amount_agencies:
             client_sock = self.__accept_new_connection()
             self.__handle_client_connection(clients_map, client_sock)
         

@@ -22,6 +22,7 @@ def generar(nombre, cant_clientes):
 		contenido += "    entrypoint: python3 /main.py\n"
 		contenido += "    environment:\n"
 		contenido += "      - PYTHONUNBUFFERED=1\n"
+		contenido += "      - AMOUNT_AGENCIES=" + str(cant_clientes) + "\n"
 		contenido += "    networks:\n"
 		contenido += "      - testing_net\n"
 		contenido += "    volumes:\n"

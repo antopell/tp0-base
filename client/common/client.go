@@ -26,6 +26,7 @@ type ClientConfig struct {
 type Client struct {
 	config ClientConfig
 	conn   net.Conn
+	continueSending	bool
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -48,6 +49,7 @@ func (c *Client) createClientSocket() error {
 			c.config.ID,
 			err,
 		)
+		return err
 	}
 	c.conn = conn
 	return nil
@@ -58,12 +60,29 @@ func (c *Client) StartClientLoop() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, syscall.SIGINT)
 
+	c.continueSending = true
+	// goroutine for handling signals
+	go func() {
+		sig := <-signalChannel
+		log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
+		c.conn.Close()
+		c.continueSending = false
+		return
+	}()
+	
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+	for msgID := 1; msgID <= c.config.LoopAmount && c.continueSending ; msgID++ {
 
-		// Create the connection the server in every loop iteration. Send an
-		c.createClientSocket()
+		// Create the connection the server in every loop iteration.
+		err := c.createClientSocket()
+		if err != nil {
+			log.Errorf("action: create_socket | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			return
+		}
 
 		// TODO: Modify the send to avoid short-write
 		fmt.Fprintf(
@@ -74,15 +93,6 @@ func (c *Client) StartClientLoop() {
 		)
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()
-
-		select {
-		case sig := <-signalChannel:
-			// c.conn should be closed by now 
-			c.conn.Close() // just in case
-			log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
-			return
-		default:
-		}
 
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",

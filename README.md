@@ -4,6 +4,133 @@ En el presente repositorio se provee un esqueleto básico de cliente/servidor, e
 
  El cliente (Golang) y el servidor (Python) fueron desarrollados en diferentes lenguajes simplemente para mostrar cómo dos lenguajes de programación pueden convivir en el mismo proyecto con la ayuda de containers, en este caso utilizando [Docker Compose](https://docs.docker.com/compose/).
 
+## Explicación de resolución de ejercicios
+### Ejercicio 1 
+Para poder correr el ejercicio se debe ejecutar el siguiente comando en la terminal:
+``` bash
+./generar-compose.sh <file_name> <amount_clients>
+```
+Al ejecutar el script se corre el código en generador.py, el cual toma los parámetros y escribe en el archivo especificado un archivo de tipo docker compose. Ese archivo generado, de la mano del comando
+``` bash
+make docker-compose-up
+```
+levanta el server y la cantidad de clientes especificadas.
+A cada cliente se le setea el CLI_ID correspondiente y se le asigna un nombre distinto.
+
+### Ejercicio 2
+Para este ejercicio se debió modificar el generador, de forma que agregue al server y a cada cliente un archivo de configuración en forma de volume. Con la sintaxis:
+```
+  - <path archivo>:<path destino en container>
+```
+se logró crear un container el cuál, al cambiar los archivos de configuración no se necesita volver a construir la imagen ya que el archivo de configuración no existe en el container en si, sino que se toma una referencia externa y al levantar el container se copia el contenido.
+
+Además se agregó tanto al server como al cliente un dockerignore, para que no copie el archivo de configuración, ya que este se cargará con el volume.
+
+La ejecución de los containers es la misma que recomienda la cátedra, usar el makefile para mayor comodidad, sino al docker compose agregar la flag -f:
+``` bash
+docker compose -f <docker compose yaml> <accion (up, down)> <container (server, client1)>
+```
+
+### Ejercicio 3
+Para correr el script validador primero se debe levantar el server haciendo.
+``` bash
+docker compose -f docker-compose-dev.yaml up server --build -d
+```
+luego, correr el validador:
+``` bash
+./validar-eco-server.sh
+```
+Este script busca los datos en el config del server para saber el puerto e IP del server dentro de la red del container. Luego se realiza un docker run con la imagen busybox donde se realiza el nc. El resultado se guarda en una variable la cual se compara con el texto original enviado y se imprime el resultado de la validación.
+
+Se eligió usar la imagen busybox por ser una imagen liviana (mas que ubuntu) y que tenía nc por default.
+
+### Ejercicio 4
+Se tuvieron en cuenta las signals SIGTERM y SIGINT, ya que son las 2 signals para terminación de programa que se pueden handlear (a diferencia de SIGKILL que no se puede handlear)
+#### Server
+Como el server esta en python, se usó 
+```
+signal.signal(signal.SIGTERM, self._graceful_exit)
+signal.signal(signal.SIGINT, self._graceful_exit)
+```
+En _graceful_exit se cierra tanto el socket aceptador como el client_sock y termina con código 0
+#### Client
+El client está programado en golang, por lo que se uso una go routine para handlear las signals, además de defers para asegurar el cierre de todos los recursos.
+Dentro de la go routine se espera por las señales y en caso de que lleguen se cierra el socket, lo cual desata el cierre del cliente de una forma ordenada.
+
+### Ejercicio 5
+Para el protocolo se utilizó el formato TLV para el mensaje de apuesta. Existen los siguientes mensajes:\
+Tipo 01: apuesta/bet
+- Tipo 01.01: agencia (int, 4 bytes)
+- Tipo 01.02: nombre (string)
+- Tipo 01.03: apellido (string)
+- Tipo 01.04: documento (int, 4 bytes)
+- Tipo 01.05: fecha nacimiento (string, AAAA-MM-DD)(fijo 10 bytes)
+- Tipo 01.06: número (int, 4 bytes)
+
+Se manda el código, luego el largo del mensaje/bet. Para los campos nombre y apellido se manda el largo del string del valor.\
+El documento se convierte a int, ya que de esta forma se usan menos bytes por bet, además de que en el caso de que apueste alguien con documento < 10M, sigue funcionando, ya que el tamaño del int lo soporta.\
+Para la fecha de nacimiento, aunque se manda en formato string, se sabe que tiene un largo fijo, por lo que no se manda el largo. \
+Para tanto el número de agencia como para el número de apuesta se usan ints, ya que enviarlos sea de largo fijo.
+
+Tipo 02: ACK de bet
+Consta de 2 datos:
+```
+<código><resultado>
+```
+El resultado es un booleano, por lo que con 1 byte es suficiente.
+Al ser un mensaje de tamaño fijo y tan chico, no pareció necesario aplicar un formato más complejo como sería TLV.
+
+Además, para poder generar los datos de la apuesta se agregaron las variables de entorno en el generador. Para darle un toque más realista, se eligen los datos de una lista de valores posibles, para generar distintos datos por cliente.  
+
+### Ejercicio 6
+Para actualizar el protocolo a su versión de envío en batch se reutilizo parte del código del ejercicio 5 de la siguiente forma:
+Tipo 03: batch (se envia con su largo total)
+- Tipo 02: agency number (equivalente al Tipo 01.01 del mensaje de apuesta)
+- Tipo 01: apuesta (se envia con su largo)
+	- Tipo 01.01: nombre (string)
+	- Tipo 01.02: apellido (string)
+	- Tipo 01.03: documento (int, 4 bytes)
+	- Tipo 01.04: fecha nacimiento (string, AAAA-MM-DD)(10 bytes)
+	- Tipo 01.05: numero (int, 4 bytes)
+
+Luego, en el cliente, por cada línea del archivo, se la parseaba a Bet y se la agregaba al batch que se formaba en el protocolo. Al terminar de agregar esa apesta, el protocolo devolvía si el batch ya estaba listo para enviar y, de ser asi, se obtenía el batch y se enviaba. Una consideración del lado del cliente es que se debe forzar el envio del último batch, ya que puede estar incompleto, pero se debe enviar toda la información.
+Por otro lado, se agregó una verificación de forma que ningún mensaje sea mayor a 8kB. En caso de excederse, se prepara el batch a enviar y la apuesta que generaba el exceso de tamaño se agrega a un nuevo batch vacío.
+
+Del lado del server, se leia prácticamente de la misma forma que una apuesta común, ya que el contenido tenía la misma estructura (menos la agencia que se setea del otro dato en el mensaje).
+
+Por otro lado, para poder abrir los archivos de datos en el cliente se agregó un volume para poder accederlo de igual forma que el archivo de configuración.
+
+Aclaración de códigos: se actualizó el codigo del ACK a 3, para que los códigos de apuestas estuviesen juntos y no se confundiesen con el de ACK
+
+### Ejercicio 7
+Para este ejercicio, primero que nada, se agregó una variable de entorno en el generador de forma que el server sepa la cantidad máxima de clientes que va a tener y tome dicha cantidad cómo la cantidad esperada de agencias para realizar el sorteo.
+
+Cuando un cliente termina de enviar todas sus apuestas envía el mensaje de espera de ganadores. El cual tiene la siguiente estructura:
+```
+<codigo - 04><agency_id>
+```
+Cuando este mensaje llega al server, se agrega a un diccionario de ```agency_id: socket``` y se espera a que la cantidad de entradas sea igual a la cantidad de agencias/clientes.
+Una vez que se tiene esa cantidad, se realiza el sorteo, se organiza cada ganador en base a su agency_id y se genera el mensaje ganadores:
+```
+<codigo - 05><largo total><documentos de cada ganador de la agencia>
+```
+Es decir, queda cada documento uno atras de otro en formato int, por lo que largo total / tamaño int = cantidad de ganadores.
+
+### Ejercicio 8
+Para el ejercicio 8 se uso multiprocessing, para tener locks, conditional variables y variables compartidas entre procesos (una implementación de monitor)
+
+Se creo la clase Connection que se convirtió en la encarga de manejar una conexión con el cliente. En el hilo principal se espera por una nueva conexión, se inicializa un Connection, se ejecuta su metodo inicial dentro de un Process (para que se puedan iniciar multiples conexiones al mismo tiempo y no tener que esperar a que termine cada una antes de seguir) y ese proceso se agrega a una lista de procesos.
+
+La lista de procesos es revisada despues de cada accept, para ir joineando cada proceso que ya haya terminado y para, en caso de recibir una signal, poder terminarlos y joinerarlos.
+
+#### Concurrencia
+Cada Connection tiene:
+- un lock compartido con todas las demás para turnarse en escribir el archivo de bets.
+- un condition, para no hacer busy wait esperando a que esten los ganadores a enviar
+- 2 monitores, uno para hacer la verificacion de si ya esta todo listo para generar los ganadores y otro para poder obtener los ganadores del sorteo
+
+De esta forma, si se puede generar los ganadores, se avisa al resto que puede enviarlos y se tiene toda información de una forma segura para trabajar entre múltiples procesos.
+
 ## Instrucciones de uso
 El repositorio cuenta con un **Makefile** que incluye distintos comandos en forma de targets. Los targets se ejecutan mediante la invocación de:  **make \<target\>**. Los target imprescindibles para iniciar y detener el sistema son **docker-compose-up** y **docker-compose-down**, siendo los restantes targets de utilidad para el proceso de depuración.
 

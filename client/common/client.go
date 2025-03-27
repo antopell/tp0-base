@@ -128,6 +128,7 @@ func (c *Client) StartClientLoop() {
 
 	}
 	c.sendBatch(true)
+	c.getWinners()
 	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
@@ -186,4 +187,21 @@ func (c *Client) sendBatch(lastSend bool) {
 	} else {
 		log.Infof("action: apuesta_enviada | result: fail")
 	}
+}
+
+func (c *Client) getWinners() []int {
+	message := c.protocol.CreateWaitingForWinnersMessage()
+	c.sendMessage(message)
+	initialBufferLen := c.protocol.GetWinnersInitialBuffer()
+	initialMsg := c.full_read(initialBufferLen)
+
+	newBuffer := c.protocol.GetWinnersBuffer(initialMsg)
+	restWinnersMsg := c.full_read(newBuffer)
+
+	completeMsg := append(initialMsg, restWinnersMsg...)
+	winnersArray := c.protocol.DecodeWinners(completeMsg)
+
+	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winnersArray))
+	return winnersArray
+
 }

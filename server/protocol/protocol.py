@@ -1,5 +1,8 @@
 from common.utils import *
 import logging
+from enum import Enum
+
+WAITING_WINNERS_CODE = 4
 
 BATCH_BET_CODE = 2
 AGENCY_BATCH_CODE = 2
@@ -19,16 +22,30 @@ CODE_LENGTH = 2
 ISODATE_LENGTH = 10
 BOOL_LENGTH = 1
 
+
+class ActionType(Enum):
+    GET_BETS = 1
+    WAIT_FOR_WINNERS = 2
+    CLOSE = 3
+
 class Protocol:
   def __init__(self):
     pass
     
 
+  def define_action_buffer_size(self):
+    return CODE_LENGTH
+  
+  def decode_action(self, action: bytearray):
+    action = int.from_bytes(action[:CODE_LENGTH ], byteorder='big')
+    if action == WAITING_WINNERS_CODE:
+      return ActionType.WAIT_FOR_WINNERS
+    return ActionType.GET_BETS
+
   def define_initial_buffer_size(self):
-    return CODE_LENGTH + INT_LENGTH 
+    return INT_LENGTH 
   
   def define_msg_len(self, initial_msg: bytearray):
-    msg_code = int.from_bytes(initial_msg[:CODE_LENGTH ], byteorder='big')
     msg_len = int.from_bytes(initial_msg[CODE_LENGTH:CODE_LENGTH + INT_LENGTH ], byteorder='big')
     return msg_len
   
@@ -125,4 +142,9 @@ class Protocol:
     message.extend(result.to_bytes(BOOL_LENGTH, byteorder='big'))
     return message
   
-  
+  def define_buffer_size_confirmation(self):
+    return INT_LENGTH
+
+  def decode_confirmation(self, msg):
+    return int.from_bytes(msg[CODE_LENGTH::], byteorder='big')
+    

@@ -38,6 +38,8 @@ func NewProtocol(agencyNumber string, batchMaxAmount int) *Protocol {
 }
 
 // TODO: ver donde conviene tener esta informacion
+const WaitingWinnersCode = 4
+
 const BatchBetCode = 2
 const	AgencyBatchCode = 2
 
@@ -199,4 +201,39 @@ func (protocol *Protocol) DecodeAck(message []byte) bool {
 
 func (protocol *Protocol) GetBufferLenAck() int {
 	return CodeLength + BoolLength
+}
+
+func (protocol *Protocol) CreateWaitingForWinnersMessage() []byte {
+	message := make([]byte, CodeLength + IntLength)
+	binary.BigEndian.PutUint16(message, uint16(WaitingWinnersCode))
+
+	agencyNumber, _ := strconv.Atoi(protocol.agencyNumber)
+	binary.BigEndian.PutUint32(message[CodeLength:], uint32(agencyNumber))
+	return message
+}
+
+func (protocol *Protocol) GetWinnersInitialBuffer() int {
+	return CodeLength + IntLength
+}
+
+func (protocol *Protocol) GetWinnersBuffer(initialMsg []byte) int {
+	return int(binary.BigEndian.Uint32(initialMsg[CodeLength:CodeLength + IntLength]))
+}
+
+func (protocol *Protocol) DecodeWinners(winnersMsg []byte) []int {
+	// msgCode := binary.BigEndian.Uint16(msg[:CodeLength])
+	amountRead := CodeLength
+
+	len := int(binary.BigEndian.Uint32(winnersMsg[amountRead:amountRead + IntLength]))
+	amountRead += IntLength
+
+	winners := make([]int, len/IntLength)
+	winnersIdx := 0
+	for amountRead < len {
+		document := int(binary.BigEndian.Uint32(winnersMsg[amountRead:amountRead + IntLength]))
+		amountRead += IntLength
+		winners[winnersIdx] = document
+		winnersIdx += 1
+	}
+	return winners
 }

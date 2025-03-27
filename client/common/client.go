@@ -92,6 +92,13 @@ func (c *Client) StartClientLoop() {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, syscall.SIGINT)
 
+	// goroutine for handling signals
+	go func() {
+		sig := <-signalChannel
+		log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
+		c.conn.Close()
+	}()
+
 	file, err := os.Open("./agencyFile.csv")
 	if err != nil {
 		log.Criticalf(
@@ -121,14 +128,6 @@ func (c *Client) StartClientLoop() {
 			}
 		}
 		
-
-		select {
-		case sig := <-signalChannel:
-			log.Infof("action: exit | result: success | client_id: %v | signal: %v", c.config.ID, sig)
-			return
-		default:
-		}
-
 	}
 	err = c.sendBatch(true)
 	if (err != nil) {

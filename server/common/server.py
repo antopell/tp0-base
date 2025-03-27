@@ -37,17 +37,20 @@ class Server:
         signal.signal(signal.SIGINT, self._graceful_exit)
 
         clients_map = dict()
-        while self.continue_running or len(clients_map) == AMOUNT_AGENCIES:
+        while self.continue_running and len(clients_map) != AMOUNT_AGENCIES:
             client_sock = self.__accept_new_connection()
             self.__handle_client_connection(clients_map, client_sock)
         
         logging.info("action: sorteo | result: success")
         clients_winners_map = dict()
         for winning_bet in load_bets():
+            winner_list = clients_winners_map.get(winning_bet.agency, [])
+            clients_winners_map[winning_bet.agency] = winner_list
             if not has_won(winning_bet):
                 continue
-            winner_list = clients_winners_map.get(winning_bet.agency, [])
-            winner_list.append(winning_bet.document)        
+            winner_list.append(winning_bet.document) 
+        logging.info(f"map lista ganadores: {clients_winners_map}")
+
 
 
     def __handle_client_connection(self, clients_map, client_sock):
@@ -81,7 +84,6 @@ class Server:
                     self.__send_ack(success, client_sock)
             
             clients_map[agency_number] = client_sock
-            logging.info(f"map: {clients_map} | agency_number: {agency_number}")
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:

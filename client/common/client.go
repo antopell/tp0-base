@@ -178,6 +178,9 @@ func (c *Client) lineToBetData(line string) (BetData, bool) {
 
 func (c *Client) sendBatch(lastSend bool) {
 	message := c.protocol.GetBatchMessage(lastSend)
+	if len(message) == 0 {
+		return
+	}
 	c.sendMessage(message)
 
 	msg := c.getAck()

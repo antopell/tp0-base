@@ -49,7 +49,7 @@ class Server:
             if not has_won(winning_bet):
                 continue
             winner_list.append(winning_bet.document) 
-        logging.info(f"map lista ganadores: {clients_winners_map}")
+        self.__send_winners(clients_map, clients_winners_map)
 
 
 
@@ -147,3 +147,14 @@ class Server:
             return -1
         return self.protocol.decode_confirmation(message)
     
+    def __send_winners(self, clients_map: dict, clients_winners_map: dict):
+        for agency_number, socket in clients_map.items():
+            message = self.protocol.create_winners_msg(clients_winners_map[agency_number])
+            try: 
+                socket.sendall(message)
+            except OSError as e:
+                logging.error(f"action: send_winners | result: fail | error: {e}")
+            finally:
+                # socket.shutdown(socket.SHUT_WR) # allows reading
+                socket.close()
+            

@@ -3,6 +3,7 @@ import logging
 from enum import Enum
 
 WAITING_WINNERS_CODE = 4
+WINNERS_CODE = 5
 
 BATCH_BET_CODE = 2
 AGENCY_BATCH_CODE = 2
@@ -147,4 +148,13 @@ class Protocol:
 
   def decode_confirmation(self, msg):
     return int.from_bytes(msg[CODE_LENGTH::], byteorder='big')
-    
+  
+  def create_winners_msg(self, winner_list):
+    message = bytearray()
+    # code|<result>
+    message.extend(WINNERS_CODE.to_bytes(CODE_LENGTH, byteorder='big'))
+    len_msg: int = len(winner_list) * INT_LENGTH
+    message.extend(len_msg.to_bytes(INT_LENGTH, byteorder='big'))
+    for winner in winner_list:
+      message.extend(int(winner).to_bytes(INT_LENGTH, byteorder='big'))
+    return message

@@ -17,11 +17,13 @@ class Server:
         self.continue_running = True
         self.protocol = Protocol()
         self.amount_agencies = int(amount_agencies)
+        self.processes = []
 
     def _graceful_exit(self, _sig, _frame):
         self._server_socket.shutdown(socket.SHUT_RDWR)
         self._server_socket.close()
         self.continue_running = False
+        self.__kill_processes()
         exit(0)
 
     def run(self):
@@ -45,71 +47,34 @@ class Server:
             clients_map = manager.dict()
             winners_map = manager.dict()
 
-            processes = []
+            
             while self.continue_running:
+                self.__remove_closed_processes()
                 client_sock = self.__accept_new_connection()
                 client = Connection(client_sock, has_winners, winners_ready, self.amount_agencies, clients_map, winners_map, lock_bets)
                 process = Process(target=client.run)
-                processes.append(process)
+                self.processes.append(process)
                 process.start()
         
         
+    def __remove_closed_processes(self):
+        active_processes = []
+        for process in self.processes:
+            if not process.is_alive():
+               process.join()
+            else:
+                active_processes.append(process)
 
+        self.processes = active_processes
 
+    def __kill_processes(self):
+        for process in self.processes:
+            if not process.is_alive():
+               process.join()
+            else:
+                process.terminate()
+                process.join()
 
-    # def __handle_client_connection(self, client_sock, has_winners):
-    #     """
-    #     Read message from a specific client socket and closes the socket
-
-    #     If a problem arises in the communication with the client, the
-    #     client socket will also be closed
-    #     """
-    #     try:
-    #         batch_ended = False
-    #         agency_number = -1
-    #         while not batch_ended:
-    #             action, message = self.__get_action(client_sock)
-    #             if action == ActionType.CLOSE:
-    #                 break
-    #             if action == ActionType.WAIT_FOR_WINNERS:
-    #                 agency_number = self.__get_confirmation(client_sock, message)
-    #                 break
-                
-    #             # action == ActionType.GET_BETS:
-    #             bets, amount, batch_ended = self.__get_bets(client_sock, message)
-    #             store_bets(bets)
-    #             if not batch_ended:
-    #                 success = len(bets) == amount
-    #                 if success:
-    #                     logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-    #                 else:
-    #                     logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
-                
-    #                 self.__send_ack(success, client_sock)
-            
-    #         self.clients_map[agency_number] = client_sock
-    #         if len(self.clients_map) == self.amount_agencies:
-    #             self.__define_winners(has_winners)
-    #         self.__send_winners(client_sock, agency_number, has_winners)
-    #     except OSError as e:
-    #         logging.error(f"action: receive_message | result: fail | error: {e}")
-    #     finally:
-    #         # client_sock.shutdown(socket.SHUT_WR) # allows reading
-    #         client_sock.close()
-
-    # def __define_winners(self, has_winners):
-    #     logging.info("action: sorteo | result: success")
-    #     with has_winners, self.winners_ready.get_lock():
-    #         for winning_bet in load_bets():
-    #             winner_list = self.winners_map.get(winning_bet.agency, [])
-    #             self.winners_map[winning_bet.agency] = winner_list
-    #             if not has_won(winning_bet):
-    #                 continue
-    #             winner_list.append(winning_bet.document)
-    #         self.winners_ready.value = True
-    #         has_winners.notify_all()
-
-        
 
     def __accept_new_connection(self):
         """

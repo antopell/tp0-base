@@ -1,5 +1,6 @@
 import socket
 import logging
+import signal
 
 from protocol.protocol import *
 from common.utils import *
@@ -18,6 +19,11 @@ class Connection():
     self.winners_map = winners_map
     self.lock_bets = lock_bets
 
+  def _graceful_exit(self, _sig, _frame):
+    self.client_sock.shutdown(socket.SHUT_WR)
+    self.client_sock.close()
+    exit(0)
+
   def run(self):
     """
     Read message from a specific client socket and closes the socket
@@ -25,6 +31,8 @@ class Connection():
     If a problem arises in the communication with the client, the
     client socket will also be closed
     """
+    signal.signal(signal.SIGTERM, self._graceful_exit)
+    signal.signal(signal.SIGINT, self._graceful_exit)
     try:
       batch_ended = False
       agency_number = -1

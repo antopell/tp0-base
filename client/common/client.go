@@ -115,7 +115,10 @@ func (c *Client) StartClientLoop() {
 
 		readyToSend := c.protocol.AddToBatch(betData.Name, betData.Surname, betData.Document, betData.BirthDateISO, betData.BettingNumber)
 		if readyToSend {
-			c.sendBatch(false)
+			err = c.sendBatch(false)
+			if (err != nil) {
+				return
+			}
 		}
 		
 
@@ -127,21 +130,27 @@ func (c *Client) StartClientLoop() {
 		}
 
 	}
-	c.sendBatch(true)
+	err = c.sendBatch(true)
+	if (err != nil) {
+		return
+	}
 	c.getWinners()
 	time.Sleep(1 * time.Second)
 	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
-func (c *Client) getAck() bool {
+func (c *Client) getAck() (bool, error) {
 	lenAck := c.protocol.GetBufferLenAck()
 
-	message := c.full_read(lenAck)
+	message, err := c.full_read(lenAck)
+	if (err != nil) {
+		return false, err
+	}
 	result := c.protocol.DecodeAck(message)
-	return result
+	return result, nil
 }
 
-func (c *Client) full_read(amountToRead int) []byte {
+func (c *Client) full_read(amountToRead int) ([]byte, error) {
 	amountRead := 0
 	fullmessage := make([]byte, amountToRead)
 	for amountRead < amountToRead {
@@ -153,10 +162,10 @@ func (c *Client) full_read(amountToRead int) []byte {
 				c.config.ID,
 				err,
 			)
-			return nil
+			return fullmessage, err
 		}
 	}
-	return fullmessage
+	return fullmessage, nil
 }
 
 
@@ -178,34 +187,44 @@ func (c *Client) lineToBetData(line string) (BetData, bool) {
 
 }
 
-func (c *Client) sendBatch(lastSend bool) {
+func (c *Client) sendBatch(lastSend bool) error {
 	message := c.protocol.GetBatchMessage(lastSend)
 	if len(message) == 0 {
-		return
+		return nil
 	}
 	c.sendMessage(message)
 
-	msg := c.getAck()
+	msg, err := c.getAck()
+	if (err != nil) {
+		return err
+	}
 	if msg {
 		log.Infof("action: apuesta_enviada | result: success")
 	} else {
 		log.Infof("action: apuesta_enviada | result: fail")
 	}
+	return nil
 }
 
-func (c *Client) getWinners() []int {
+func (c *Client) getWinners() ([]int, error) {
 	message := c.protocol.CreateWaitingForWinnersMessage()
 	c.sendMessage(message)
 	initialBufferLen := c.protocol.GetWinnersInitialBuffer()
-	initialMsg := c.full_read(initialBufferLen)
+	initialMsg, err := c.full_read(initialBufferLen)
+	if (err != nil) {
+		return nil, err
+	}
 
 	newBuffer := c.protocol.GetWinnersBuffer(initialMsg)
-	restWinnersMsg := c.full_read(newBuffer)
+	restWinnersMsg, err := c.full_read(newBuffer)
+	if (err != nil) {
+		return nil, err
+	}
 
 	completeMsg := append(initialMsg, restWinnersMsg...)
 	winnersArray := c.protocol.DecodeWinners(completeMsg)
 
 	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winnersArray))
-	return winnersArray
+	return winnersArray, nil
 
 }

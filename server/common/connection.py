@@ -40,6 +40,7 @@ class Connection():
         bets, amount, batch_ended = self.__get_bets(message)
         with self.lock_bets:
           store_bets(bets)
+
         if not batch_ended:
           success = len(bets) == amount
           if success:
@@ -49,7 +50,7 @@ class Connection():
       
           self.__send_ack(success)
       
-      self.clients_map[agency_number] = self.client_sock
+      self.clients_map.update({agency_number: self.client_sock})
       if len(self.clients_map) == self.amount_agencies:
         self.__define_winners()
       self.__send_winners(agency_number)
@@ -64,24 +65,12 @@ class Connection():
       with self.has_winners, self.winners_ready.get_lock():
           for winning_bet in load_bets():
               winner_list = self.winners_map.get(winning_bet.agency, [])
-              self.winners_map[winning_bet.agency] = winner_list
               if not has_won(winning_bet):
                   continue
               winner_list.append(winning_bet.document)
+              self.winners_map.update({winning_bet.agency: winner_list})
           self.winners_ready.value = True
           self.has_winners.notify_all()
-  
-  def __define_winners(self):
-    logging.info("action: sorteo | result: success")
-    with self.has_winners, self.winners_ready.get_lock():
-      for winning_bet in load_bets():
-        winner_list = self.winners_map.get(winning_bet.agency, [])
-        self.winners_map[winning_bet.agency] = winner_list
-        if not has_won(winning_bet):
-          continue
-        winner_list.append(winning_bet.document)
-      self.winners_ready.value = True
-      self.has_winners.notify_all()
   
   def __get_action(self) -> ActionType: 
     read_amount = self.protocol.define_action_buffer_size()
@@ -134,11 +123,11 @@ class Connection():
       if has_to_wait:
         self.has_winners.wait()
 
-      message = self.protocol.create_winners_msg(self.winners_map[agency_number])
-      try: 
-        self.client_sock.sendall(message)
-      except OSError as e:
-        logging.error(f"action: send_winners | result: fail | error: {e}")
-      finally:
-        # self.client_sock.shutdown(socket.SHUT_WR) # allows reading
-        self.client_sock.close()
+    message = self.protocol.create_winners_msg(self.winners_map.get(agency_number, []))
+    try: 
+      self.client_sock.sendall(message)
+    except OSError as e:
+      logging.error(f"action: send_winners | result: fail | error: {e}")
+    finally:
+      # self.client_sock.shutdown(socket.SHUT_WR) # allows reading
+      self.client_sock.close()

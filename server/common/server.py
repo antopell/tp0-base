@@ -52,7 +52,6 @@ class Server:
                 process = Process(target=client.run)
                 processes.append(process)
                 process.start()
-                logging.info("POST START")
         
         
 

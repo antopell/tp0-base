@@ -14,10 +14,14 @@ class Server:
         self.continue_running = True
         self.protocol = Protocol()
         self.amount_agencies = int(amount_agencies)
+        self.clients_map = dict()
 
     def _graceful_exit(self, _sig, _frame):
-        self._server_socket.shutdown(socket.SHUT_RDWR)
+        self._server_socket.shutdown(socket.SHUT_WR)
         self._server_socket.close()
+        for socket in self.clients_map.values():
+            socket.shutdown(socket.SHUT_WR)
+            socket.close()
         self.continue_running = False
         exit(0)
 
@@ -33,25 +37,31 @@ class Server:
         # Handle signal to graceful shutdown the server
         signal.signal(signal.SIGTERM, self._graceful_exit)
         signal.signal(signal.SIGINT, self._graceful_exit)
+        while self.continue_running:
+            self.clients_map = dict()
+            while self.continue_running and len(self.clients_map) != self.amount_agencies:
+                try:
+                    client_sock = self.__accept_new_connection()
+                    self.__handle_client_connection(client_sock)
+                except OSError as e:
+                    logging.error("action: failed accept | result: fail | error: {e}")
+                    return
+                
+            
+            logging.info("action: sorteo | result: success")
+            
+            clients_winners_map = dict()
+            for winning_bet in load_bets():
+                winner_list = clients_winners_map.get(winning_bet.agency, [])
+                clients_winners_map[winning_bet.agency] = winner_list
+                if not has_won(winning_bet):
+                    continue
+                winner_list.append(winning_bet.document) 
+            self.__send_winners(clients_winners_map)
 
-        clients_map = dict()
-        while self.continue_running and len(clients_map) != self.amount_agencies:
-            client_sock = self.__accept_new_connection()
-            self.__handle_client_connection(clients_map, client_sock)
-        
-        logging.info("action: sorteo | result: success")
-        clients_winners_map = dict()
-        for winning_bet in load_bets():
-            winner_list = clients_winners_map.get(winning_bet.agency, [])
-            clients_winners_map[winning_bet.agency] = winner_list
-            if not has_won(winning_bet):
-                continue
-            winner_list.append(winning_bet.document) 
-        self.__send_winners(clients_map, clients_winners_map)
 
 
-
-    def __handle_client_connection(self, clients_map, client_sock):
+    def __handle_client_connection(self, client_sock):
         """
         Read message from a specific client socket and closes the socket
 
@@ -81,7 +91,7 @@ class Server:
                 
                     self.__send_ack(success, client_sock)
             
-            clients_map[agency_number] = client_sock
+            self.clients_map[agency_number] = client_sock
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:
@@ -145,8 +155,8 @@ class Server:
             return -1
         return self.protocol.decode_confirmation(message)
     
-    def __send_winners(self, clients_map: dict, clients_winners_map: dict):
-        for agency_number, socket in clients_map.items():
+    def __send_winners(self, clients_winners_map: dict):
+        for agency_number, socket in self.clients_map.items():
             message = self.protocol.create_winners_msg(clients_winners_map[agency_number])
             try: 
                 socket.sendall(message)

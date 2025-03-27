@@ -21,7 +21,6 @@ type Protocol struct {
 	betInCreation 		[]byte
 	messageToSend		  []byte
 	amountBets				int	
-	amountBetsInBatch	int	
 	lenWritten				int // to help with the writing of each bet
 	agencyNumber 			string
 	maxAmount					int
@@ -109,13 +108,15 @@ func (protocol *Protocol) AddToBatch(name string, surname string, document strin
 }
 
 func (protocol *Protocol) resetBatchMessage() {
-	protocol.amountBetsInBatch = protocol.amountBets
 	protocol.amountBets = 0
 	protocol.messageToSend = protocol.messageInCreation
 	protocol.messageInCreation = []byte{}
 }
 
-func (protocol *Protocol) GetBatchMessage() []byte {
+func (protocol *Protocol) GetBatchMessage(forceSend bool) []byte {
+	if forceSend {
+		protocol.resetBatchMessage()
+	}
 	lenBatch := len(protocol.messageToSend)
 	if lenBatch == 0 {
 		return []byte{}

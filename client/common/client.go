@@ -115,7 +115,7 @@ func (c *Client) StartClientLoop() {
 
 		readyToSend := c.protocol.AddToBatch(betData.Name, betData.Surname, betData.Document, betData.BirthDateISO, betData.BettingNumber)
 		if readyToSend {
-			c.sendBatch()
+			c.sendBatch(false)
 		}
 		
 
@@ -127,7 +127,7 @@ func (c *Client) StartClientLoop() {
 		}
 
 	}
-	c.sendBatch()
+	c.sendBatch(true)
 	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
@@ -176,8 +176,8 @@ func (c *Client) lineToBetData(line string) (BetData, bool) {
 
 }
 
-func (c *Client) sendBatch() {
-	message := c.protocol.GetBatchMessage()
+func (c *Client) sendBatch(lastSend bool) {
+	message := c.protocol.GetBatchMessage(lastSend)
 	c.sendMessage(message)
 
 	msg := c.getAck()

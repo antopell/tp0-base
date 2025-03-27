@@ -129,6 +129,7 @@ func (c *Client) StartClientLoop() {
 	}
 	c.sendBatch(true)
 	c.getWinners()
+	time.Sleep(1 * time.Second)
 	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 

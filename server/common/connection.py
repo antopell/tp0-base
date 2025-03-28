@@ -9,12 +9,12 @@ from multiprocessing import Condition, Value, Process, Lock
 
 
 class Connection():
-  def __init__(self, client_sock, has_winners, amount_agencies, clients_map, winners_map, lock_bets):
+  def __init__(self, client_sock, has_winners, amount_agencies, clients_ready, winners_map, lock_bets):
     self.client_sock = client_sock
     self.has_winners = has_winners
     self.protocol = Protocol()
     self.amount_agencies = amount_agencies
-    self.clients_map = clients_map
+    self.clients_ready = clients_ready
     self.winners_map = winners_map
     self.lock_bets = lock_bets
 
@@ -56,10 +56,13 @@ class Connection():
       
           self.__send_ack(success)
       
-      self.clients_map.update({agency_number: self.client_sock})
+      can_define_winners = False
+      with self.clients_ready.get_lock():
+        self.clients_ready.value += 1
+        can_define_winners = self.clients_ready.value == self.amount_agencies
 
       with self.has_winners:
-        if len(self.clients_map) == self.amount_agencies:
+        if can_define_winners:
           self.__define_winners()
           self.has_winners.notify_all()
         else:

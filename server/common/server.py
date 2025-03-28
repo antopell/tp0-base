@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from multiprocessing import Condition, Process, Manager, Lock
-from ctypes import c_bool
+from ctypes import c_int
 
 from protocol.protocol import *
 from common.utils import *
@@ -42,14 +42,14 @@ class Server:
         lock_bets = Lock()
         
         with Manager() as manager:
-            clients_map = manager.dict()
+            clients_amount = Value(c_int, 0)
             winners_map = manager.dict()
 
             
             while self.continue_running:
                 self.__remove_closed_processes()
                 client_sock = self.__accept_new_connection()
-                client = Connection(client_sock, has_winners, self.amount_agencies, clients_map, winners_map, lock_bets)
+                client = Connection(client_sock, has_winners, self.amount_agencies, clients_amount, winners_map, lock_bets)
                 process = Process(target=client.run)
                 self.processes.append(process)
                 process.start()

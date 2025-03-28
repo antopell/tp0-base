@@ -61,8 +61,9 @@ class Connection():
       with self.has_winners:
         if len(self.clients_map) == self.amount_agencies:
           self.__define_winners()
-        
-        self.has_winners.wait()
+          self.has_winners.notify_all()
+        else:
+          self.has_winners.wait()
         self.__send_winners(agency_number)
     except OSError as e:
       logging.error(f"action: receive_message | result: fail | error: {e}")
@@ -77,7 +78,6 @@ class Connection():
           continue
         winner_list.append(winning_bet.document)
         self.winners_map.update({winning_bet.agency: winner_list})
-      self.has_winners.notify_all()
   
   def __get_action(self) -> ActionType: 
     read_amount = self.protocol.define_action_buffer_size()

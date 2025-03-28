@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from multiprocessing import Condition, Value, Process, Manager, Lock
+from multiprocessing import Condition, Process, Manager, Lock
 from ctypes import c_bool
 
 from protocol.protocol import *
@@ -20,7 +20,6 @@ class Server:
         self.processes = []
 
     def _graceful_exit(self, _sig, _frame):
-        self._server_socket.shutdown(socket.SHUT_RDWR)
         self._server_socket.close()
         self.continue_running = False
         self.__kill_processes()
@@ -39,7 +38,6 @@ class Server:
         signal.signal(signal.SIGTERM, self._graceful_exit)
         signal.signal(signal.SIGINT, self._graceful_exit)
 
-        winners_ready = Value(c_bool, False)
         has_winners = Condition()
         lock_bets = Lock()
         
@@ -51,7 +49,7 @@ class Server:
             while self.continue_running:
                 self.__remove_closed_processes()
                 client_sock = self.__accept_new_connection()
-                client = Connection(client_sock, has_winners, winners_ready, self.amount_agencies, clients_map, winners_map, lock_bets)
+                client = Connection(client_sock, has_winners, self.amount_agencies, clients_map, winners_map, lock_bets)
                 process = Process(target=client.run)
                 self.processes.append(process)
                 process.start()

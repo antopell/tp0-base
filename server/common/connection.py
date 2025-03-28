@@ -9,18 +9,16 @@ from multiprocessing import Condition, Value, Process, Lock
 
 
 class Connection():
-  def __init__(self, client_sock, has_winners, winners_ready, amount_agencies, clients_map, winners_map, lock_bets):
+  def __init__(self, client_sock, has_winners, amount_agencies, clients_map, winners_map, lock_bets):
     self.client_sock = client_sock
     self.has_winners = has_winners
     self.protocol = Protocol()
-    self.winners_ready = winners_ready
     self.amount_agencies = amount_agencies
     self.clients_map = clients_map
     self.winners_map = winners_map
     self.lock_bets = lock_bets
 
   def _graceful_exit(self, _sig, _frame):
-    self.client_sock.shutdown(socket.SHUT_WR)
     self.client_sock.close()
     exit(0)
 
@@ -59,26 +57,27 @@ class Connection():
           self.__send_ack(success)
       
       self.clients_map.update({agency_number: self.client_sock})
-      if len(self.clients_map) == self.amount_agencies:
-        self.__define_winners()
-      self.__send_winners(agency_number)
+
+      with self.has_winners:
+        if len(self.clients_map) == self.amount_agencies:
+          self.__define_winners()
+        
+        self.has_winners.wait()
+        self.__send_winners(agency_number)
     except OSError as e:
       logging.error(f"action: receive_message | result: fail | error: {e}")
     finally:
-      # client_sock.shutdown(socket.SHUT_WR) # allows reading
       self.client_sock.close()
 
   def __define_winners(self):
       logging.info("action: sorteo | result: success")
-      with self.has_winners, self.winners_ready.get_lock():
-          for winning_bet in load_bets():
-              winner_list = self.winners_map.get(winning_bet.agency, [])
-              if not has_won(winning_bet):
-                  continue
-              winner_list.append(winning_bet.document)
-              self.winners_map.update({winning_bet.agency: winner_list})
-          self.winners_ready.value = True
-          self.has_winners.notify_all()
+      for winning_bet in load_bets():
+        winner_list = self.winners_map.get(winning_bet.agency, [])
+        if not has_won(winning_bet):
+          continue
+        winner_list.append(winning_bet.document)
+        self.winners_map.update({winning_bet.agency: winner_list})
+      self.has_winners.notify_all()
   
   def __get_action(self) -> ActionType: 
     read_amount = self.protocol.define_action_buffer_size()
@@ -123,19 +122,10 @@ class Connection():
     return self.protocol.decode_confirmation(message)
     
   def __send_winners(self, agency_number):
-    with self.has_winners:
-      has_to_wait = True
-      with self.winners_ready.get_lock():
-        has_to_wait = not self.winners_ready.value
-
-      if has_to_wait:
-        self.has_winners.wait()
-
     message = self.protocol.create_winners_msg(self.winners_map.get(agency_number, []))
     try: 
       self.client_sock.sendall(message)
     except OSError as e:
       logging.error(f"action: send_winners | result: fail | error: {e}")
     finally:
-      # self.client_sock.shutdown(socket.SHUT_WR) # allows reading
       self.client_sock.close()

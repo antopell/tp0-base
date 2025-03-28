@@ -135,13 +135,12 @@ func (c *Client) StartClientLoop() {
 	}
 	c.getWinners()
 	time.Sleep(1 * time.Second)
-	// log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
 func (c *Client) getAck() (bool, error) {
 	lenAck := c.protocol.GetBufferLenAck()
 
-	message, err := c.full_read(lenAck)
+	message, err := c.fullRead(lenAck)
 	if (err != nil) {
 		return false, err
 	}
@@ -149,7 +148,7 @@ func (c *Client) getAck() (bool, error) {
 	return result, nil
 }
 
-func (c *Client) full_read(amountToRead int) ([]byte, error) {
+func (c *Client) fullRead(amountToRead int) ([]byte, error) {
 	amountRead := 0
 	fullmessage := make([]byte, amountToRead)
 	for amountRead < amountToRead {
@@ -209,13 +208,13 @@ func (c *Client) getWinners() ([]int, error) {
 	message := c.protocol.CreateWaitingForWinnersMessage()
 	c.sendMessage(message)
 	initialBufferLen := c.protocol.GetWinnersInitialBuffer()
-	initialMsg, err := c.full_read(initialBufferLen)
+	initialMsg, err := c.fullRead(initialBufferLen)
 	if (err != nil) {
 		return nil, err
 	}
 
 	newBuffer := c.protocol.GetWinnersBuffer(initialMsg)
-	restWinnersMsg, err := c.full_read(newBuffer)
+	restWinnersMsg, err := c.fullRead(newBuffer)
 	if (err != nil) {
 		return nil, err
 	}
